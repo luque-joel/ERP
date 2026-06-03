@@ -1,0 +1,340 @@
+{% extends 'taller/base.html' %}
+
+{% block title %}Nueva Orden de Trabajo | MotoTaller ERP{% endblock %}
+
+{% block content %}
+<div class="header-section">
+    <div>
+        <a href="{% url 'taller:orden_list' %}" style="color: var(--primary); text-decoration: none; font-size: 0.95rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <i class="fa-solid fa-arrow-left"></i> Volver al listado
+        </a>
+        <h1 class="title-main">Recepción de Vehículo</h1>
+        <p class="subtitle-main">Abra una nueva orden de trabajo, ingrese clientes y vehículos al sistema.</p>
+    </div>
+</div>
+
+<form method="POST" action="{% url 'taller:orden_create' %}" id="otForm">
+    {% csrf_token %}
+    
+    <div class="detail-grid">
+        <!-- Columna Izquierda: Cliente, Vehículo y Taller -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            
+            <!-- SECCIÓN 1: DATOS DEL CLIENTE -->
+            <div class="card-premium">
+                <h3 style="font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1.2rem; color: var(--primary); display: flex; justify-content: space-between; align-items: center;">
+                    <span><i class="fa-solid fa-user"></i> 1. Información del Cliente</span>
+                    <button type="button" id="btnToggleCliente" class="btn-premium btn-secondary-premium" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="toggleClientMode()">
+                        Registrar Nuevo Cliente
+                    </button>
+                </h3>
+                
+                <!-- Selector de Cliente Existente -->
+                <div id="clientSelectContainer">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Seleccione un Cliente Registrado:*</label>
+                    <select name="cliente_id" id="cliente_id_select" class="input-premium" required>
+                        <option value="">-- Buscar / Seleccionar Cliente --</option>
+                        {% for cli in clientes %}
+                        <option value="{{ cli.id }}">{{ cli.nombre }} (ID: {{ cli.cedula_ruc }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Formulario de Nuevo Cliente (Oculto por defecto) -->
+                <div id="newClientForm" style="display: none;">
+                    <input type="hidden" name="cliente_mode" id="cliente_mode" value="existente">
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Identificación SRI:*</label>
+                            <select name="cli_tipo_id" class="input-premium" style="padding: 0.5rem;">
+                                <option value="05">Cédula</option>
+                                <option value="04">RUC</option>
+                                <option value="06">Pasaporte</option>
+                                <option value="07">Consumidor Final</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Cédula / RUC / Pasaporte:*</label>
+                            <input type="text" name="cli_cedula" id="cli_cedula_input" class="input-premium" placeholder="Ej: 0912345678" style="padding: 0.5rem;">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Nombre Completo / Razón Social:*</label>
+                        <input type="text" name="cli_nombre" id="cli_nombre_input" class="input-premium" placeholder="Ej: Juan Pérez" style="padding: 0.5rem;">
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Teléfono:</label>
+                            <input type="text" name="cli_telefono" class="input-premium" placeholder="Ej: 0987654321" style="padding: 0.5rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Correo Electrónico:</label>
+                            <input type="email" name="cli_email" class="input-premium" placeholder="Ej: juan@gmail.com" style="padding: 0.5rem;">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Dirección Física:</label>
+                        <textarea name="cli_direccion" class="input-premium" rows="2" placeholder="Ej: Guayaquil, Av. Principal #123" style="padding: 0.5rem;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN 2: DATOS DEL VEHÍCULO -->
+            <div class="card-premium">
+                <h3 style="font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1.2rem; color: var(--primary); display: flex; justify-content: space-between; align-items: center;">
+                    <span><i class="fa-solid fa-motorcycle"></i> 2. Información del Vehículo</span>
+                    <button type="button" id="btnToggleVehiculo" class="btn-premium btn-secondary-premium" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="toggleVehicleMode()">
+                        Registrar Nuevo Vehículo
+                    </button>
+                </h3>
+                
+                <!-- Selector de Vehículo Existente -->
+                <div id="vehicleSelectContainer">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Seleccione un Vehículo Registrado:*</label>
+                    <select name="vehiculo_id" id="vehiculo_id_select" class="input-premium" required>
+                        <option value="">-- Buscar por Placa o Cliente --</option>
+                        {% for veh in vehiculos %}
+                        <option value="{{ veh.id }}" data-owner="{{ veh.cliente.id }}">{{ veh.marca }} {{ veh.modelo }} [Placa: {{ veh.placa|default:"S/P" }}] - Propietario: {{ veh.cliente.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Formulario de Nuevo Vehículo (Oculto por defecto) -->
+                <div id="newVehicleForm" style="display: none;">
+                    <input type="hidden" name="vehiculo_mode" id="vehiculo_mode" value="existente">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Tipo:*</label>
+                            <select name="veh_tipo" class="input-premium" style="padding: 0.5rem;">
+                                <option value="MOTO">Motocicleta</option>
+                                <option value="TRICIMOTO">Tricimoto</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Marca:*</label>
+                            <input type="text" name="veh_marca" id="veh_marca_input" class="input-premium" placeholder="Ej: Bajaj, Shineray" style="padding: 0.5rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Modelo:*</label>
+                            <input type="text" name="veh_modelo" id="veh_modelo_input" class="input-premium" placeholder="Ej: Pulsar, RE-205" style="padding: 0.5rem;">
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Año:</label>
+                            <input type="number" name="veh_anio" class="input-premium" placeholder="Ej: 2024" style="padding: 0.5rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Placa (Ecuador):</label>
+                            <input type="text" name="veh_placa" class="input-premium" placeholder="Ej: AA123B o S/P" style="padding: 0.5rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Color:</label>
+                            <input type="text" name="veh_color" class="input-premium" placeholder="Ej: Rojo, Azul" style="padding: 0.5rem;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Número de Motor:</label>
+                            <input type="text" name="veh_num_motor" class="input-premium" placeholder="Ej: LX153FMI..." style="padding: 0.5rem;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Número de Chasis (VIN):</label>
+                            <input type="text" name="veh_num_chasis" class="input-premium" placeholder="Ej: 9CD321A..." style="padding: 0.5rem;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Recepción Taller, Checklist y Envío -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <!-- Recepción y Mecánico -->
+            <div class="card-premium">
+                <h3 style="font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1.2rem; color: var(--primary);"><i class="fa-solid fa-toolbox"></i> 3. Recepción en Taller</h3>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Mecánico Responsable:*</label>
+                    <select name="mecanico_id" class="input-premium" required>
+                        <option value="">-- Asignar Mecánico Disponible --</option>
+                        {% for m in mecanicos %}
+                        <option value="{{ m.id }}">{{ m.nombre }} ({{ m.get_estado_display }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Kilometraje:*</label>
+                        <input type="number" name="kilometraje" class="input-premium" min="0" value="0" required style="padding: 0.5rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Combustible:*</label>
+                        <select name="nivel_combustible" class="input-premium" style="padding: 0.5rem;">
+                            <option value="Vacío">Vacío</option>
+                            <option value="1/4" selected>1/4</option>
+                            <option value="1/2">1/2</option>
+                            <option value="3/4">3/4</option>
+                            <option value="Lleno">Lleno</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Falla Reportada / Observaciones Recepción:*</label>
+                    <textarea name="observaciones_recepcion" class="input-premium" rows="3" required placeholder="Describa la falla reportada por el cliente. Ej: Cambio de aceite y bujía, chillido en el freno trasero..."></textarea>
+                </div>
+            </div>
+
+            <!-- Checklist Visual -->
+            <div class="card-premium">
+                <h3 style="font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1.2rem; color: var(--primary);"><i class="fa-solid fa-list-check"></i> 4. Checklist Físico del Vehículo</h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="chk_retrovisores" id="chk_retrovisores" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <label for="chk_retrovisores" style="font-size: 0.9rem; cursor: pointer;">Retrovisores</label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="chk_luces_direccionales" id="chk_luces" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <label for="chk_luces" style="font-size: 0.9rem; cursor: pointer;">Luces Direccionales</label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="chk_faro_principal" id="chk_faro" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <label for="chk_faro" style="font-size: 0.9rem; cursor: pointer;">Faro Principal</label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="chk_frenos" id="chk_frenos" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <label for="chk_frenos" style="font-size: 0.9rem; cursor: pointer;">Frenos Operativos</label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="chk_llaves" id="chk_llaves" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <label for="chk_llaves" style="font-size: 0.9rem; cursor: pointer;">Llaves</label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="chk_casco" id="chk_casco" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <label for="chk_casco" style="font-size: 0.9rem; cursor: pointer;">Casco Cliente</label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="chk_herramientas" id="chk_herramientas" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <label for="chk_herramientas" style="font-size: 0.9rem; cursor: pointer;">Herramientas</label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" name="chk_bateria" id="chk_bateria" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        <label for="chk_bateria" style="font-size: 0.9rem; cursor: pointer;">Batería Integrada</label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botón de Envío -->
+            <button type="submit" class="btn-premium" style="justify-content: center; padding: 1rem; font-size: 1.1rem;">
+                <i class="fa-solid fa-folder-plus"></i>
+                <span>Abrir Orden de Trabajo e Iniciar</span>
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let newClientMode = false;
+    let newVehicleMode = false;
+
+    const btnCliente = document.getElementById('btnToggleCliente');
+    const selectClienteCont = document.getElementById('clientSelectContainer');
+    const selectClienteObj = document.getElementById('cliente_id_select');
+    const formCliente = document.getElementById('newClientForm');
+    const modeCliente = document.getElementById('cliente_mode');
+    
+    // Inputs del nuevo cliente
+    const inputCedula = document.getElementById('cli_cedula_input');
+    const inputNombre = document.getElementById('cli_nombre_input');
+
+    const btnVehiculo = document.getElementById('btnToggleVehiculo');
+    const selectVehiculoCont = document.getElementById('vehicleSelectContainer');
+    const selectVehiculoObj = document.getElementById('vehiculo_id_select');
+    const formVehiculo = document.getElementById('newVehicleForm');
+    const modeVehiculo = document.getElementById('vehiculo_mode');
+    
+    // Inputs del nuevo vehículo
+    const inputMarca = document.getElementById('veh_marca_input');
+    const inputModelo = document.getElementById('veh_modelo_input');
+
+    function toggleClientMode() {
+        newClientMode = !newClientMode;
+        if (newClientMode) {
+            btnCliente.innerText = "Seleccionar Cliente Registrado";
+            selectClienteCont.style.display = "none";
+            formCliente.style.display = "block";
+            modeCliente.value = "nuevo";
+            selectClienteObj.removeAttribute('required');
+            inputCedula.setAttribute('required', 'true');
+            inputNombre.setAttribute('required', 'true');
+            
+            // Si el cliente es nuevo, forzar que el vehículo también se registre como nuevo
+            if (!newVehicleMode) toggleVehicleMode();
+            btnVehiculo.style.display = "none";
+        } else {
+            btnCliente.innerText = "Registrar Nuevo Cliente";
+            selectClienteCont.style.display = "block";
+            formCliente.style.display = "none";
+            modeCliente.value = "existente";
+            selectClienteObj.setAttribute('required', 'true');
+            inputCedula.removeAttribute('required');
+            inputNombre.removeAttribute('required');
+            btnVehiculo.style.display = "block";
+        }
+    }
+
+    function toggleVehicleMode() {
+        newVehicleMode = !newVehicleMode;
+        if (newVehicleMode) {
+            btnVehiculo.innerText = "Seleccionar Vehículo Registrado";
+            selectVehiculoCont.style.display = "none";
+            formVehiculo.style.display = "block";
+            modeVehiculo.value = "nuevo";
+            selectVehiculoObj.removeAttribute('required');
+            inputMarca.setAttribute('required', 'true');
+            inputModelo.setAttribute('required', 'true');
+        } else {
+            btnVehiculo.innerText = "Registrar Nuevo Vehículo";
+            selectVehiculoCont.style.display = "block";
+            formVehiculo.style.display = "none";
+            modeVehiculo.value = "existente";
+            selectVehiculoObj.setAttribute('required', 'true');
+            inputMarca.removeAttribute('required');
+            inputModelo.removeAttribute('required');
+        }
+    }
+
+    // Filtrar vehículos del select basándose en el cliente seleccionado
+    selectClienteObj.addEventListener('change', () => {
+        const clientVal = selectClienteObj.value;
+        const options = selectVehiculoObj.querySelectorAll('option');
+        
+        let firstMatch = false;
+        selectVehiculoObj.value = "";
+        
+        options.forEach(opt => {
+            const owner = opt.getAttribute('data-owner');
+            if (!owner) return; // Opción vacía por defecto
+            
+            if (clientVal === "" || owner === clientVal) {
+                opt.style.display = "block";
+                if (!firstMatch && clientVal !== "") {
+                    selectVehiculoObj.value = opt.value;
+                    firstMatch = true;
+                }
+            } else {
+                opt.style.display = "none";
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,495 @@
+{% extends 'taller/base.html' %}
+
+{% block title %}Punto de Venta (POS) | MotoTaller ERP{% endblock %}
+
+{% block content %}
+<!-- Mensajes del POS -->
+{% if messages %}
+<div style="margin-bottom: 2rem; display: flex; flex-direction: column; gap: 0.75rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 12px; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; 
+        {% if message.tags == 'success' %}
+            background-color: rgba(25, 135, 84, 0.15); color: hsl(145, 75%, 55%); border: 1px solid rgba(25, 135, 84, 0.3);
+        {% else %}
+            background-color: rgba(220, 53, 69, 0.15); color: hsl(0, 85%, 65%); border: 1px solid rgba(220, 53, 69, 0.3);
+        {% endif %}">
+        <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check{% else %}fa-circle-xmark{% endif %}"></i>
+        <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="header-section" style="margin-bottom: 1.5rem;">
+    <div>
+        <h1 class="title-main"><i class="fa-solid fa-cash-register" style="color: var(--primary);"></i> Caja / POS de Facturación</h1>
+        <p class="subtitle-main">Realice ventas directas de mostrador o facture órdenes de trabajo terminadas.</p>
+    </div>
+</div>
+
+<div class="detail-grid" style="grid-template-columns: 1.2fr 1fr;">
+    
+    <!-- COLUMNA IZQUIERDA: CATÁLOGO Y ORDENES DE TRABAJO -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        
+        <!-- PESTAÑAS DE VENTA -->
+        <div style="display: flex; gap: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+            <button id="tabVentaDirecta" class="tab-btn active" onclick="switchMode('directa')">
+                <i class="fa-solid fa-store"></i> Venta Directa Repuestos
+            </button>
+            <button id="tabFacturarOT" class="tab-btn" onclick="switchMode('ot')">
+                <i class="fa-solid fa-screwdriver-wrench"></i> Facturar Orden Trabajo
+            </button>
+        </div>
+
+        <!-- SECCIÓN A: CATÁLOGO DE REPUESTOS -->
+        <div id="sectionRepuestos" class="card-premium">
+            <div style="margin-bottom: 1rem;">
+                <input type="text" id="posSearchInput" class="input-premium" placeholder="🔍 Buscar repuesto por nombre o SKU..." oninput="filterPOSRepuestos()">
+            </div>
+            
+            <div style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.5rem;">
+                {% for r in repuestos %}
+                <div class="pos-item-row" data-id="{{ r.id }}" data-name="{{ r.nombre|lower }}" data-sku="{{ r.sku|lower }}" data-price="{{ r.precio_venta }}" data-stock="{{ r.stock }}" data-iva="{{ r.tarifa_iva }}" onclick="addItemToCart('{{ r.id }}', '{{ r.nombre }}', '{{ r.precio_venta }}', '{{ r.stock }}', '{{ r.tarifa_iva }}')">
+                    <div>
+                        <h4 style="font-size: 0.95rem; font-weight: bold; color: var(--text-main);">{{ r.nombre }}</h4>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">SKU: {{ r.sku }} | IVA: {{ r.get_tarifa_iva_display }}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 1.05rem; font-weight: 800; color: var(--primary); display: block;">${{ r.precio_venta }}</span>
+                        <span style="font-size: 0.75rem; color: hsl(145, 75%, 55%);">Disponibles: {{ r.stock }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="text-align: center; color: var(--text-muted); padding: 2rem;">No hay repuestos con stock disponible en bodega.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- SECCIÓN B: ÓRDENES DE TRABAJO TERMINADAS -->
+        <div id="sectionOTs" class="card-premium" style="display: none;">
+            <div style="max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;">
+                {% for o in ordenes %}
+                <div class="pos-ot-row" onclick="loadOTToCart('{{ o.id }}', '{{ o.codigo_orden }}', '{{ o.vehiculo.cliente.id }}', '{{ o.vehiculo.cliente.nombre }}', '{{ o.mano_obra }}', '{{ o.total_repuestos }}', '{{ o.total_general }}')">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="font-weight: bold; color: var(--primary); font-size: 1.05rem;">{{ o.codigo_orden }}</span>
+                        <span class="badge-status badge-terminado" style="font-size: 0.7em;">TERMINADO</span>
+                    </div>
+                    <p style="font-size: 0.9rem; margin-bottom: 0.25rem;">Propietario: <strong>{{ o.vehiculo.cliente.nombre }}</strong></p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        {{ o.vehiculo.get_tipo_display }} {{ o.vehiculo.marca }} [{{ o.vehiculo.placa|default:"S/P" }}]
+                    </p>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border-color); padding-top: 0.5rem; font-size: 0.9rem;">
+                        <span>Mano de Obra: <strong>${{ o.mano_obra }}</strong></span>
+                        <span style="color: var(--primary); font-weight: 800;">Total: ${{ o.total_general }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                    👍 No hay órdenes de trabajo terminadas pendientes de cobro en este momento.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- COLUMNA DERECHA: CARRO DE COMPRAS Y EMISIÓN DE FACTURA -->
+    <div class="card-premium" style="display: flex; flex-direction: column; height: fit-content; border-color: rgba(245, 158, 11, 0.25);">
+        <h3 style="font-size: 1.2rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1.2rem; display: flex; align-items: center; justify-content: space-between;">
+            <span><i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Comprobante</span>
+            <button class="btn-premium btn-secondary-premium" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="clearCart()">Vaciar</button>
+        </h3>
+
+        <form action="{% url 'taller:pos_facturar' %}" method="post" id="posSubmitForm" onsubmit="prepareSubmitData()">
+            {% csrf_token %}
+            <input type="hidden" name="cart_data" id="cartDataInput" value="[]">
+            <input type="hidden" name="orden_trabajo_id" id="otIdInput" value="">
+
+            <!-- CLIENTE DEL COMPROBANTE -->
+            <div style="margin-bottom: 1.2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Cliente de la Factura:*</label>
+                    <button type="button" class="btn-premium btn-secondary-premium" style="padding: 0.15rem 0.4rem; font-size: 0.7rem;" onclick="setConsumidorFinal()">Consumidor Final</button>
+                </div>
+                <select name="cliente_id" id="pos_cliente_select" class="input-premium" required>
+                    <option value="">-- Seleccionar Cliente --</option>
+                    {% for c in clientes %}
+                    <option value="{{ c.id }}">{{ c.nombre }} ({{ c.cedula_ruc }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- DETALLES DEL CARRITO -->
+            <div style="border: 1px solid var(--border-color); border-radius: 12px; background-color: rgba(0,0,0,0.15); padding: 0.75rem; margin-bottom: 1.2rem;">
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom: 0.4rem; margin-bottom: 0.5rem;">Ítems Cargados:</div>
+                <div id="cartLinesContainer" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- Cargados dinámicamente por JS -->
+                    <div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 1rem;">Carro vacío. Cargue ítems o seleccione una orden.</div>
+                </div>
+            </div>
+
+            <!-- DESCUENTOS Y FORMAS DE PAGO -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Descuento ($):</label>
+                    <input type="number" step="0.01" name="descuento" id="posDiscountInput" class="input-premium" value="0.00" min="0" oninput="calculateTotals()" style="padding: 0.5rem;">
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Forma de Pago SRI:*</label>
+                    <select name="metodo_pago" class="input-premium" style="padding: 0.5rem; font-size: 0.85rem;" required>
+                        <option value="01">01 - Efectivo</option>
+                        <option value="20">20 - Transferencia/Dinero Elec.</option>
+                        <option value="16">16 - Tarjeta de Débito</option>
+                        <option value="19">19 - Tarjeta de Crédito</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- PANEL DE TOTALES (CÁLCULO AUTOMÁTICO ECUADOR) -->
+            <div class="summary-cost-box" style="margin-top: 0; background-color: rgba(0,0,0,0.2); border-color: var(--border-color); padding: 1rem; margin-bottom: 1.5rem;">
+                <div class="cost-row" style="font-size: 0.9rem; margin-bottom: 0.35rem;">
+                    <span>Subtotal 15% (Graba IVA):</span>
+                    <strong id="labelSub15">$0.00</strong>
+                </div>
+                <div class="cost-row" style="font-size: 0.9rem; margin-bottom: 0.35rem;">
+                    <span>Subtotal 0% (Exento):</span>
+                    <strong id="labelSub0">$0.00</strong>
+                </div>
+                <div class="cost-row" style="font-size: 0.9rem; margin-bottom: 0.35rem; color: hsl(0, 85%, 65%);">
+                    <span>Descuento aplicado:</span>
+                    <strong id="labelDesc">-$0.00</strong>
+                </div>
+                <div class="cost-row" style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                    <span>IVA Ecuatoriano (15%):</span>
+                    <strong id="labelIva">$0.00</strong>
+                </div>
+                <div class="cost-row total" style="border-top: 1px dashed var(--primary); padding-top: 0.5rem; font-size: 1.3rem;">
+                    <span>Total a Pagar:</span>
+                    <span id="labelTotal" style="color: var(--primary); font-weight: 800;">$0.00</span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-premium" style="width: 100%; justify-content: center; padding: 0.9rem; font-size: 1.1rem;">
+                <i class="fa-solid fa-file-invoice-dollar"></i>
+                <span>Emitir y Autorizar Factura</span>
+            </button>
+        </form>
+    </div>
+
+</div>
+
+<style>
+    /* Estilos del POS interactivo */
+    .tab-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-family: var(--font-main);
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 0.5rem 1rem;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .tab-btn.active {
+        color: var(--primary);
+        border-bottom: 3px solid var(--primary);
+    }
+    .pos-item-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background-color: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    .pos-item-row:hover {
+        background-color: var(--border-color);
+        border-color: var(--primary);
+        transform: translateX(4px);
+    }
+    .pos-ot-row {
+        background-color: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border-color);
+        padding: 1rem;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    .pos-ot-row:hover {
+        border-color: var(--primary);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-glow);
+    }
+    .cart-line-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+        background-color: rgba(0,0,0,0.1);
+        padding: 0.4rem 0.6rem;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.02);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let mode = 'directa'; // 'directa' o 'ot'
+    let cart = []; // Estructura de venta directa: [{id, name, price, stock, quantity, iva}]
+    let loadedOT = null; // Estructura de OT cargada: {id, code, client_id, name, mano_obra, total_repuestos, total_general}
+
+    // Cambiar de Pestaña
+    function switchMode(newMode) {
+        mode = newMode;
+        document.getElementById('tabVentaDirecta').classList.remove('active');
+        document.getElementById('tabFacturarOT').classList.remove('active');
+        document.getElementById('sectionRepuestos').style.display = 'none';
+        document.getElementById('sectionOTs').style.display = 'none';
+
+        if (mode === 'directa') {
+            document.getElementById('tabVentaDirecta').classList.add('active');
+            document.getElementById('sectionRepuestos').style.display = 'block';
+        } else {
+            document.getElementById('tabFacturarOT').classList.add('active');
+            document.getElementById('sectionOTs').style.display = 'block';
+        }
+        clearCart();
+    }
+
+    // Consumidor Final Express
+    function setConsumidorFinal() {
+        const select = document.getElementById('pos_cliente_select');
+        const options = select.options;
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].text.includes("9999999999999") || options[i].text.includes("Consumidor Final")) {
+                select.selectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    // Agregar repuesto al carrito (Venta Directa)
+    function addItemToCart(id, name, price, stock, iva) {
+        if (mode !== 'directa') return;
+        stock = parseInt(stock);
+        price = parseFloat(price);
+
+        const existing = cart.find(item => item.id === id);
+        if (existing) {
+            if (existing.quantity >= stock) {
+                alert(`No hay suficiente stock en bodega para vender más de ${stock} unidades.`);
+                return;
+            }
+            existing.quantity++;
+        } else {
+            cart.push({
+                id: id,
+                name: name,
+                price: price,
+                stock: stock,
+                quantity: 1,
+                iva: iva
+            });
+        }
+        renderCart();
+    }
+
+    // Cargar una Orden de Trabajo al POS
+    function loadOTToCart(id, code, clientId, clientName, manoObra, totalRepuestos, totalGeneral) {
+        if (mode !== 'ot') return;
+        
+        loadedOT = {
+            id: id,
+            code: code,
+            client_id: clientId,
+            name: clientName,
+            mano_obra: parseFloat(manoObra),
+            total_repuestos: parseFloat(totalRepuestos),
+            total_general: parseFloat(totalGeneral)
+        };
+
+        // Seleccionar automáticamente al cliente dueño de la OT
+        const select = document.getElementById('pos_cliente_select');
+        select.value = clientId;
+
+        renderCart();
+    }
+
+    // Eliminar o decrementar del carro
+    function removeItem(id) {
+        if (mode === 'directa') {
+            const index = cart.findIndex(item => item.id === id);
+            if (index !== -1) {
+                cart[index].quantity--;
+                if (cart[index].quantity <= 0) {
+                    cart.splice(index, 1);
+                }
+            }
+        } else {
+            loadedOT = null;
+            document.getElementById('pos_cliente_select').value = "";
+        }
+        renderCart();
+    }
+
+    // Renderizar las líneas del ticket
+    function renderCart() {
+        const container = document.getElementById('cartLinesContainer');
+        container.innerHTML = "";
+
+        if (mode === 'directa') {
+            if (cart.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 1rem;">Carro vacío. Seleccione repuestos del catálogo.</div>';
+                calculateTotals();
+                return;
+            }
+
+            cart.forEach(item => {
+                const row = document.createElement('div');
+                row.className = "cart-line-item";
+                row.innerHTML = `
+                    <div style="flex-grow: 1;">
+                        <strong>${item.name}</strong> <span style="color: var(--primary);">x${item.quantity}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                        <button type="button" onclick="removeItem('${item.id}')" style="background: transparent; border: none; color: hsl(0,85%,60%); cursor: pointer;"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        } else {
+            if (!loadedOT) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 1rem;">Ninguna orden de trabajo seleccionada.</div>';
+                calculateTotals();
+                return;
+            }
+
+            const row = document.createElement('div');
+            row.className = "cart-line-item";
+            row.style.flexDirection = "column";
+            row.style.alignItems = "stretch";
+            row.innerHTML = `
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.25rem; margin-bottom: 0.25rem;">
+                    <span>Cobro Orden: <strong>${loadedOT.code}</strong></span>
+                    <button type="button" onclick="removeItem()" style="background: transparent; border: none; color: hsl(0,85%,60%); cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                    <span>Servicio Mecánico (Laboral):</span>
+                    <span>$${loadedOT.mano_obra.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                    <span>Repuestos del Taller:</span>
+                    <span>$${loadedOT.total_repuestos.toFixed(2)}</span>
+                </div>
+            `;
+            container.appendChild(row);
+        }
+
+        calculateTotals();
+    }
+
+    // Limpiar carrito
+    function clearCart() {
+        cart = [];
+        loadedOT = null;
+        document.getElementById('pos_cliente_select').value = "";
+        document.getElementById('posDiscountInput').value = "0.00";
+        renderCart();
+    }
+
+    // Calcular montos de impuestos y totales
+    function calculateTotals() {
+        let sub15 = 0;
+        let sub0 = 0;
+        const discount = parseFloat(document.getElementById('posDiscountInput').value) || 0;
+
+        if (mode === 'directa') {
+            cart.forEach(item => {
+                const subtotal = item.price * item.quantity;
+                if (item.iva === '2') {
+                    sub15 += subtotal;
+                } else {
+                    sub0 += subtotal;
+                }
+            });
+        } else if (loadedOT) {
+            // El servicio técnico en Ecuador graba IVA 15%
+            sub15 += loadedOT.mano_obra;
+            // Para repuestos de la orden, estimamos proporcional o según el modelo.
+            // Para simplificación, los repuestos sumarán al subtotal del taller.
+            // La vista de backend calculará de manera exacta consultando la BD de forma segura.
+            sub15 += loadedOT.total_repuestos; 
+        }
+
+        const totalSub = sub15 + sub0;
+        let finalDesc = Math.min(discount, totalSub);
+        
+        // Descuento proporcional
+        let factor = totalSub > 0 ? (totalSub - finalDesc) / totalSub : 0;
+        let sub15Desc = sub15 * factor;
+        let sub0Desc = sub0 * factor;
+        
+        let iva = sub15Desc * 0.15;
+        let total = sub15Desc + sub0Desc + iva;
+
+        document.getElementById('labelSub15').innerText = `$${sub15.toFixed(2)}`;
+        document.getElementById('labelSub0').innerText = `$${sub0.toFixed(2)}`;
+        document.getElementById('labelDesc').innerText = `-$${finalDesc.toFixed(2)}`;
+        document.getElementById('labelIva').innerText = `$${iva.toFixed(2)}`;
+        document.getElementById('labelTotal').innerText = `$${total.toFixed(2)}`;
+    }
+
+    // Preparar el envío del formulario
+    function prepareSubmitData() {
+        document.getElementById('cartDataInput').value = JSON.stringify(cart);
+        if (mode === 'ot' && loadedOT) {
+            document.getElementById('otIdInput').value = loadedOT.id;
+        } else {
+            document.getElementById('otIdInput').value = "";
+        }
+    }
+
+    // Buscador instantáneo del catálogo
+    function filterPOSRepuestos() {
+        const query = document.getElementById('posSearchInput').value.toLowerCase().trim();
+        const items = document.querySelectorAll('.pos-item-row');
+        
+        items.forEach(item => {
+            const name = item.getAttribute('data-name');
+            const sku = item.getAttribute('data-sku');
+            if (name.includes(query) || sku.includes(query)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // Comprobar si se abre con pre-carga de orden
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoOTId = urlParams.get('orden_id');
+        if (autoOTId) {
+            switchMode('ot');
+            
+            // Simular clic en la orden recibida por URL
+            const otRows = document.querySelectorAll('.pos-ot-row');
+            otRows.forEach(row => {
+                if (row.outerHTML.includes(`loadOTToCart('${autoOTId}'`)) {
+                    row.click();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

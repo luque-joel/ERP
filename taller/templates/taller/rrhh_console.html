@@ -1,0 +1,475 @@
+{% extends 'taller/base.html' %}
+
+{% block title %}Talento Humano | MotoTaller ERP{% endblock %}
+
+{% block content %}
+<!-- Mensajes del Sistema -->
+{% if messages %}
+<div style="margin-bottom: 2rem; display: flex; flex-direction: column; gap: 0.75rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 12px; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; 
+        {% if message.tags == 'success' %}
+            background-color: rgba(25, 135, 84, 0.15); color: hsl(145, 75%, 55%); border: 1px solid rgba(25, 135, 84, 0.3);
+        {% else %}
+            background-color: rgba(220, 53, 69, 0.15); color: hsl(0, 85%, 65%); border: 1px solid rgba(220, 53, 69, 0.3);
+        {% endif %}">
+        <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check{% else %}fa-circle-xmark{% endif %}"></i>
+        <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="header-section">
+    <div>
+        <h1 class="title-main"><i class="fa-solid fa-people-roof" style="color: var(--primary);"></i> División de Talento Humano</h1>
+        <p class="subtitle-main">Gestione mecánicos, turnos de horarios y el archivo contable de nóminas.</p>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+        <button onclick="openModal('modalMecanico')" class="btn-premium btn-secondary-premium">
+            <i class="fa-solid fa-user-plus"></i>
+            <span>Nuevo Mecánico</span>
+        </button>
+        <button onclick="openModal('modalHorario')" class="btn-premium btn-secondary-premium">
+            <i class="fa-solid fa-calendar-plus"></i>
+            <span>Asignar Horario</span>
+        </button>
+        <button onclick="openModal('modalNomina')" class="btn-premium">
+            <i class="fa-solid fa-calculator"></i>
+            <span>Procesar Nómina</span>
+        </button>
+    </div>
+</div>
+
+<!-- NAVEGACIÓN INTERNA POR PESTAÑAS -->
+<div style="display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 2rem;">
+    <button id="tabBtnEmpleados" class="tab-btn active" onclick="switchRRHHTab('empleados')">
+        <i class="fa-solid fa-id-card"></i> Personal Administrativo
+    </button>
+    <button id="tabBtnMecanicos" class="tab-btn" onclick="switchRRHHTab('mecanicos')">
+        <i class="fa-solid fa-wrench"></i> Equipo Operativo (Mecánicos)
+    </button>
+    <button id="tabBtnHorarios" class="tab-btn" onclick="switchRRHHTab('horarios')">
+        <i class="fa-solid fa-business-time"></i> Control de Horarios
+    </button>
+    <button id="tabBtnNominas" class="tab-btn" onclick="switchRRHHTab('nominas')">
+        <i class="fa-solid fa-money-check-dollar"></i> Archivo de Nóminas
+    </button>
+</div>
+
+<!-- 1. SECCIÓN PERSONAL -->
+<div id="rrhh_empleados" class="card-premium">
+    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--primary);">
+        <i class="fa-solid fa-user-tie"></i> Empleados Registrados
+    </h3>
+    <div class="table-container">
+        <table class="table-premium">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Cédula</th>
+                    <th>Cargo / Departamento</th>
+                    <th>Teléfono</th>
+                    <th>Sueldo Base</th>
+                    <th>Comisión (%)</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in empleados %}
+                <tr>
+                    <td style="font-weight: 700; color: var(--primary);">{{ emp.user.get_full_name|default:emp.user.username }}</td>
+                    <td style="font-family: monospace;">{{ emp.cedula }}</td>
+                    <td><strong style="color: var(--text-main);">{{ emp.get_cargo_display }}</strong></td>
+                    <td>{{ emp.telefono|default:"-" }}</td>
+                    <td>${{ emp.sueldo_base|floatformat:2 }}</td>
+                    <td>{{ emp.porcentaje_comision }}%</td>
+                    <td>
+                        {% if emp.activo %}
+                        <span class="badge-status badge-terminado" style="font-size: 0.7em;">Activo</span>
+                        {% else %}
+                        <span class="badge-status badge-esperando" style="font-size: 0.7em;">Inactivo</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No hay personal administrativo registrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 2. SECCIÓN MECÁNICOS -->
+<div id="rrhh_mecanicos" class="card-premium" style="display: none;">
+    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--primary);">
+        <i class="fa-solid fa-screwdriver-wrench"></i> Staff Operativo de Taller
+    </h3>
+    <div class="table-container">
+        <table class="table-premium">
+            <thead>
+                <tr>
+                    <th>Nombre Mecánico</th>
+                    <th>Teléfono de Contacto</th>
+                    <th>Estado Taller</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mec in mecanicos %}
+                <tr>
+                    <td style="font-weight: 700; color: var(--text-main);">{{ mec.nombre }}</td>
+                    <td>{{ mec.telefono|default:"-" }}</td>
+                    <td>
+                        {% if mec.estado == 'DISPONIBLE' %}
+                        <span class="badge-status badge-terminado" style="font-size: 0.75em; padding: 0.25rem 0.6rem;">Disponible</span>
+                        {% elif mec.estado == 'OCUPADO' %}
+                        <span class="badge-status badge-proceso" style="font-size: 0.75em; padding: 0.25rem 0.6rem;">En Reparación</span>
+                        {% else %}
+                        <span class="badge-status badge-esperando" style="font-size: 0.75em; padding: 0.25rem 0.6rem;">Inactivo / Ausente</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 2rem;">No hay mecánicos registrados en el taller.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 3. SECCIÓN HORARIOS -->
+<div id="rrhh_horarios" class="card-premium" style="display: none;">
+    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--primary);">
+        <i class="fa-solid fa-clock"></i> Horarios Laborales y Turnos
+    </h3>
+    <div class="table-container">
+        <table class="table-premium">
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Tipo</th>
+                    <th>Día Laboral</th>
+                    <th>Hora Entrada</th>
+                    <th>Hora Salida</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for hor in horarios %}
+                <tr>
+                    <td style="font-weight: 700; color: var(--primary);">
+                        {% if hor.empleado %}{{ hor.empleado }}{% else %}{{ hor.mecanico.nombre }}{% endif %}
+                    </td>
+                    <td>
+                        {% if hor.empleado %}
+                        <span style="font-size: 0.85em; opacity: 0.8;">Administrativo</span>
+                        {% else %}
+                        <span style="font-size: 0.85em; color: var(--primary);">Operativo / Taller</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 600;">{{ hor.get_dia_semana_display }}</td>
+                    <td style="font-family: monospace;">{{ hor.hora_entrada }}</td>
+                    <td style="font-family: monospace;">{{ hor.hora_salida }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No se han asignado turnos ni horarios.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 4. SECCIÓN NÓMINAS -->
+<div id="rrhh_nominas" class="card-premium" style="display: none;">
+    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--primary);">
+        <i class="fa-solid fa-file-invoice-dollar"></i> Archivo Contable de Nóminas
+    </h3>
+    <div class="table-container">
+        <table class="table-premium">
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Período de Liquidación</th>
+                    <th>Sueldo Base</th>
+                    <th>Comisiones</th>
+                    <th>Bonos</th>
+                    <th>Deducciones (IESS)</th>
+                    <th>Total Neto Pagado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for nom in nominas %}
+                <tr>
+                    <td style="font-weight: 700; color: var(--text-main);">
+                        {% if nom.empleado %}{{ nom.empleado }}{% else %}{{ nom.mecanico.nombre }}{% endif %}
+                    </td>
+                    <td style="font-size: 0.9rem;">{{ nom.fecha_inicio|date:"d/m/Y" }} al {{ nom.fecha_fin|date:"d/m/Y" }}</td>
+                    <td>${{ nom.sueldo_basico|floatformat:2 }}</td>
+                    <td style="color: var(--primary); font-weight: bold;">${{ nom.comisiones|floatformat:2 }}</td>
+                    <td>${{ nom.bonificaciones|floatformat:2 }}</td>
+                    <td style="color: hsl(0,85%,65%);">-${{ nom.deducciones|floatformat:2 }}</td>
+                    <td style="font-weight: 800; color: hsl(145, 75%, 55%); font-size: 1.05rem;">${{ nom.total_pagar|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No hay registros contables de nóminas pagadas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL REGISTRAR MECÁNICO -->
+<div id="modalMecanico" class="rrhh-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card-premium" style="width: 450px; max-width: 90%;">
+        <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; color: var(--primary);"><i class="fa-solid fa-user-plus"></i> Registrar Nuevo Mecánico</h3>
+        <form action="{% url 'taller:mecanico_create' %}" method="post">
+            {% csrf_token %}
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Nombre Completo:*</label>
+                <input type="text" name="nombre" class="input-premium" style="padding: 0.5rem;" required placeholder="Ej: Carlos Zambrano">
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Teléfono de Contacto:</label>
+                <input type="text" name="telefono" class="input-premium" style="padding: 0.5rem;" placeholder="Ej: 0987654321">
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Estado Inicial:*</label>
+                <select name="estado" class="input-premium" style="padding: 0.5rem;">
+                    <option value="DISPONIBLE">Disponible</option>
+                    <option value="OCUPADO">En reparación</option>
+                    <option value="INACTIVO">Ausente / Inactivo</option>
+                </select>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" class="btn-premium btn-secondary-premium" onclick="closeModal('modalMecanico')" style="padding: 0.5rem 1rem;">Cancelar</button>
+                <button type="submit" class="btn-premium" style="padding: 0.5rem 1rem;">Registrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL ASIGNAR HORARIO -->
+<div id="modalHorario" class="rrhh-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card-premium" style="width: 480px; max-width: 90%;">
+        <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; color: var(--primary);"><i class="fa-solid fa-calendar-plus"></i> Asignar Horario de Trabajo</h3>
+        <form action="{% url 'taller:horario_create' %}" method="post">
+            {% csrf_token %}
+            
+            <div style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; background-color: rgba(0,0,0,0.1);">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Seleccione a Quién Asignar:*</label>
+                <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
+                    <label style="cursor: pointer; font-size: 0.9rem;"><input type="radio" name="tipo_persona" value="empleado" checked onclick="toggleHorarioFields('empleado')"> Empleado Adm.</label>
+                    <label style="cursor: pointer; font-size: 0.9rem;"><input type="radio" name="tipo_persona" value="mecanico" onclick="toggleHorarioFields('mecanico')"> Mecánico</label>
+                </div>
+                
+                <select name="empleado_id" id="horario_empleado_select" class="input-premium" style="padding: 0.5rem;">
+                    <option value="">-- Seleccionar Empleado --</option>
+                    {% for e in lista_empleados %}
+                    <option value="{{ e.id }}">{{ e }}</option>
+                    {% endfor %}
+                </select>
+                
+                <select name="mecanico_id" id="horario_mecanico_select" class="input-premium" style="padding: 0.5rem; display: none;">
+                    <option value="">-- Seleccionar Mecánico --</option>
+                    {% for m in lista_mecanicos %}
+                    <option value="{{ m.id }}">{{ m.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Día de la Semana:*</label>
+                <select name="dia_semana" class="input-premium" style="padding: 0.5rem;" required>
+                    <option value="1">Lunes</option>
+                    <option value="2">Martes</option>
+                    <option value="3">Miércoles</option>
+                    <option value="4">Jueves</option>
+                    <option value="5">Viernes</option>
+                    <option value="6">Sábado</option>
+                    <option value="7">Domingo</option>
+                </select>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Hora de Entrada:*</label>
+                    <input type="time" name="hora_entrada" class="input-premium" style="padding: 0.5rem;" required value="08:00">
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Hora de Salida:*</label>
+                    <input type="time" name="hora_salida" class="input-premium" style="padding: 0.5rem;" required value="17:00">
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" class="btn-premium btn-secondary-premium" onclick="closeModal('modalHorario')" style="padding: 0.5rem 1rem;">Cancelar</button>
+                <button type="submit" class="btn-premium" style="padding: 0.5rem 1rem;">Asignar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL PROCESAR NÓMINA -->
+<div id="modalNomina" class="rrhh-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card-premium" style="width: 500px; max-width: 90%;">
+        <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; color: var(--primary);"><i class="fa-solid fa-calculator"></i> Liquidación y Nómina de Personal</h3>
+        <form action="{% url 'taller:nomina_create' %}" method="post">
+            {% csrf_token %}
+            
+            <div style="margin-bottom: 1rem; border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; background-color: rgba(0,0,0,0.1);">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Seleccione al Liquidado:*</label>
+                <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
+                    <label style="cursor: pointer; font-size: 0.9rem;"><input type="radio" name="nomina_tipo" value="empleado" checked onclick="toggleNominaFields('empleado')"> Empleado Adm.</label>
+                    <label style="cursor: pointer; font-size: 0.9rem;"><input type="radio" name="nomina_tipo" value="mecanico" onclick="toggleNominaFields('mecanico')"> Mecánico</label>
+                </div>
+                
+                <select name="empleado_id" id="nomina_empleado_select" class="input-premium" style="padding: 0.5rem;">
+                    <option value="">-- Seleccionar Empleado --</option>
+                    {% for e in lista_empleados %}
+                    <option value="{{ e.id }}">{{ e }}</option>
+                    {% endfor %}
+                </select>
+                
+                <select name="mecanico_id" id="nomina_mecanico_select" class="input-premium" style="padding: 0.5rem; display: none;">
+                    <option value="">-- Seleccionar Mecánico --</option>
+                    {% for m in lista_mecanicos %}
+                    <option value="{{ m.id }}">{{ m.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Período Desde:*</label>
+                    <input type="date" name="fecha_inicio" class="input-premium" style="padding: 0.5rem;" required>
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Período Hasta:*</label>
+                    <input type="date" name="fecha_fin" class="input-premium" style="padding: 0.5rem;" required>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Sueldo Base ($):*</label>
+                    <input type="number" step="0.01" name="sueldo_basico" class="input-premium" value="460.00" required style="padding: 0.5rem;">
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Comisiones ($):</label>
+                    <input type="number" step="0.01" name="comisiones" class="input-premium" value="0.00" style="padding: 0.5rem;">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Bonificaciones ($):</label>
+                    <input type="number" step="0.01" name="bonificaciones" class="input-premium" value="0.00" style="padding: 0.5rem;">
+                </div>
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Deducciones / IESS ($):</label>
+                    <input type="number" step="0.01" name="deducciones" class="input-premium" value="43.47" style="padding: 0.5rem;">
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" class="btn-premium btn-secondary-premium" onclick="closeModal('modalNomina')" style="padding: 0.5rem 1rem;">Cancelar</button>
+                <button type="submit" class="btn-premium" style="padding: 0.5rem 1rem;">Liquidar y Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .tab-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-family: var(--font-main);
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        padding: 0.5rem 1rem;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .tab-btn.active {
+        color: var(--primary);
+        border-bottom: 3px solid var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function switchRRHHTab(tabName) {
+        document.getElementById('tabBtnEmpleados').classList.remove('active');
+        document.getElementById('tabBtnMecanicos').classList.remove('active');
+        document.getElementById('tabBtnHorarios').classList.remove('active');
+        document.getElementById('tabBtnNominas').classList.remove('active');
+        
+        document.getElementById('rrhh_empleados').style.display = 'none';
+        document.getElementById('rrhh_mecanicos').style.display = 'none';
+        document.getElementById('rrhh_horarios').style.display = 'none';
+        document.getElementById('rrhh_nominas').style.display = 'none';
+        
+        if (tabName === 'empleados') {
+            document.getElementById('tabBtnEmpleados').classList.add('active');
+            document.getElementById('rrhh_empleados').style.display = 'block';
+        } else if (tabName === 'mecanicos') {
+            document.getElementById('tabBtnMecanicos').classList.add('active');
+            document.getElementById('rrhh_mecanicos').style.display = 'block';
+        } else if (tabName === 'horarios') {
+            document.getElementById('tabBtnHorarios').classList.add('active');
+            document.getElementById('rrhh_horarios').style.display = 'block';
+        } else if (tabName === 'nominas') {
+            document.getElementById('tabBtnNominas').classList.add('active');
+            document.getElementById('rrhh_nominas').style.display = 'block';
+        }
+    }
+
+    function openModal(id) {
+        document.getElementById(id).style.display = 'flex';
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    function toggleHorarioFields(tipo) {
+        if (tipo === 'empleado') {
+            document.getElementById('horario_empleado_select').style.display = 'block';
+            document.getElementById('horario_empleado_select').setAttribute('required', 'true');
+            document.getElementById('horario_mecanico_select').style.display = 'none';
+            document.getElementById('horario_mecanico_select').removeAttribute('required');
+        } else {
+            document.getElementById('horario_empleado_select').style.display = 'none';
+            document.getElementById('horario_empleado_select').removeAttribute('required');
+            document.getElementById('horario_mecanico_select').style.display = 'block';
+            document.getElementById('horario_mecanico_select').setAttribute('required', 'true');
+        }
+    }
+
+    function toggleNominaFields(tipo) {
+        if (tipo === 'empleado') {
+            document.getElementById('nomina_empleado_select').style.display = 'block';
+            document.getElementById('nomina_empleado_select').setAttribute('required', 'true');
+            document.getElementById('nomina_mecanico_select').style.display = 'none';
+            document.getElementById('nomina_mecanico_select').removeAttribute('required');
+        } else {
+            document.getElementById('nomina_empleado_select').style.display = 'none';
+            document.getElementById('nomina_empleado_select').removeAttribute('required');
+            document.getElementById('nomina_mecanico_select').style.display = 'block';
+            document.getElementById('nomina_mecanico_select').setAttribute('required', 'true');
+        }
+    }
+</script>
+{% endblock %}

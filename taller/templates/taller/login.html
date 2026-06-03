@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso al Sistema | MotoTaller ERP</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: hsl(220, 15%, 8%);
+            --bg-card: hsl(220, 12%, 14%);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: hsl(38, 92%, 50%);
+            --primary-hover: hsl(38, 95%, 43%);
+            --primary-glow: rgba(245, 158, 11, 0.4);
+            --text-main: hsl(0, 0%, 96%);
+            --text-muted: hsl(220, 10%, 70%);
+            --font-main: 'Outfit', sans-serif;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: radial-gradient(circle at center, rgba(245, 158, 11, 0.03) 0%, rgba(0, 0, 0, 0) 70%);
+        }
+
+        /* Card de Login Glassmorphic */
+        .login-card {
+            width: 420px;
+            max-width: 100%;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .logo-icon {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+            filter: drop-shadow(0 0 10px var(--primary-glow));
+        }
+
+        .logo-text {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            background: linear-gradient(to right, var(--text-main), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.25rem;
+        }
+
+        .logo-tagline {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+            position: relative;
+        }
+
+        .form-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 0.4rem;
+        }
+
+        .input-container {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .input-premium {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 0.85rem 1rem 0.85rem 2.8rem;
+            border-radius: 12px;
+            font-family: var(--font-main);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .input-premium:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .input-premium:focus + .input-icon {
+            color: var(--primary);
+        }
+
+        .btn-submit {
+            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+            color: var(--bg-dark);
+            font-weight: 700;
+            font-size: 1.05rem;
+            padding: 0.9rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: var(--font-main);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+            transition: var(--transition);
+            margin-top: 1rem;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+            filter: brightness(1.1);
+        }
+
+        /* Banner de alertas */
+        .alert-banner {
+            padding: 0.85rem 1rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: rgba(220, 53, 69, 0.15);
+            color: hsl(0, 85%, 65%);
+            border: 1px solid rgba(220, 53, 69, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <div class="login-header">
+        <div class="logo-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+        <h2 class="logo-text">MotoTaller ERP</h2>
+        <p class="logo-tagline">Consola de Control de Departamentos</p>
+    </div>
+
+    <!-- Mostrar alertas flash de Django -->
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert-banner">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label class="form-label" for="username">Usuario:*</label>
+            <div class="input-container">
+                <input type="text" name="username" id="username" class="input-premium" placeholder="Ej: recepcionista_ot" required autocomplete="username">
+                <i class="fa-solid fa-user input-icon"></i>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label class="form-label" for="password">Contraseña:*</label>
+            <div class="input-container">
+                <input type="password" name="password" id="password" class="input-premium" placeholder="••••••••" required autocomplete="current-password">
+                <i class="fa-solid fa-lock input-icon"></i>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-submit">
+            <span>Iniciar Sesión</span>
+            <i class="fa-solid fa-arrow-right-to-bracket"></i>
+        </button>
+    </form>
+</div>
+
+</body>
+</html>

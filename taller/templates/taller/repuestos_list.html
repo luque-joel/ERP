@@ -1,0 +1,265 @@
+{% extends 'taller/base.html' %}
+
+{% block title %}Inventario de Repuestos | MotoTaller ERP{% endblock %}
+
+{% block content %}
+<!-- Mensajes del Sistema -->
+{% if messages %}
+<div style="margin-bottom: 2rem; display: flex; flex-direction: column; gap: 0.75rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 12px; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; 
+        {% if message.tags == 'success' %}
+            background-color: rgba(25, 135, 84, 0.15); color: hsl(145, 75%, 55%); border: 1px solid rgba(25, 135, 84, 0.3);
+        {% else %}
+            background-color: rgba(220, 53, 69, 0.15); color: hsl(0, 85%, 65%); border: 1px solid rgba(220, 53, 69, 0.3);
+        {% endif %}">
+        <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check{% else %}fa-circle-xmark{% endif %}"></i>
+        <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="header-section">
+    <div>
+        <h1 class="title-main">Inventario de Repuestos</h1>
+        <p class="subtitle-main">Gestione el catálogo de repuestos y controle la compatibilidad para motos y tricimotos.</p>
+    </div>
+    <div>
+        <button onclick="openMovimientoModal(null)" class="btn-premium">
+            <i class="fa-solid fa-boxes-packing"></i>
+            <span>Registrar Movimiento Bodega</span>
+        </button>
+    </div>
+</div>
+
+<!-- Buscador y Filtros Dinámicos -->
+<div class="card-premium" style="margin-bottom: 2rem; padding: 1.2rem;">
+    <div class="search-filter-box">
+        <div>
+            <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">
+                <i class="fa-solid fa-magnifying-glass"></i> Buscar por Nombre, Código o Marca:
+            </label>
+            <input type="text" id="searchInput" class="input-premium" placeholder="Ej: bujia, pastillas de freno, filtro, bando...">
+        </div>
+        <div>
+            <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">
+                <i class="fa-solid fa-motorcycle"></i> Filtrar por Compatibilidad:
+            </label>
+            <select id="compatFilter" class="input-premium" style="padding-right: 2rem;">
+                <option value="ALL">-- Todos los Modelos --</option>
+                {% for compat in compatibilidades %}
+                <option value="{{ compat.id }}">{{ compat.marca }} {{ compat.modelo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Accesos rápidos por categoría:</span>
+        <button class="btn-category active" data-cat="ALL">Todos</button>
+        <button class="btn-category" data-cat="MOTOR">Motor</button>
+        <button class="btn-category" data-cat="ELECTRICO">Eléctrico</button>
+        <button class="btn-category" data-cat="TRANSMISION">Transmisión</button>
+        <button class="btn-category" data-cat="FRENOS">Frenos</button>
+        <button class="btn-category" data-cat="LLANTAS">Llantas</button>
+    </div>
+</div>
+
+<!-- Grid de Catálogo de Repuestos -->
+<div class="parts-grid" id="partsCatalog">
+    {% for repuesto in repuestos %}
+    <div class="card-premium part-card" 
+         data-sku="{{ repuesto.sku|lower }}"
+         data-name="{{ repuesto.nombre|lower }}"
+         data-brand="{{ repuesto.marca|lower }}"
+         data-cat="{{ repuesto.categoria }}"
+         data-compats="{% for c in repuesto.compatibilidades.all %}{{ c.id }},{% endfor %}">
+        
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <span style="font-family: monospace; font-size: 0.8rem; color: var(--primary); font-weight: bold;">SKU: {{ repuesto.sku }}</span>
+                <span class="stock-status-pill">
+                    {% if repuesto.stock <= 0 %}
+                        <span class="stock-alert-pill stock-critico">AGOTADO</span>
+                    {% elif repuesto.stock <= repuesto.stock_minimo %}
+                        <span class="stock-alert-pill stock-reorden">REORDEN ({{ repuesto.stock }})</span>
+                    {% else %}
+                        <span style="color: hsl(145, 75%, 55%); font-weight: bold; font-size: 0.85rem;">Stock: {{ repuesto.stock }}</span>
+                    {% endif %}
+                </span>
+            </div>
+            
+            <h3 class="part-title">{{ repuesto.nombre }}</h3>
+            
+            <div class="part-meta">Categoría: <strong>{{ repuesto.get_categoria_display }}</strong></div>
+            <div class="part-meta">Marca: <strong>{{ repuesto.marca|default:"Genérico" }}</strong></div>
+            <div class="part-meta">Ubicación: <strong style="color: var(--text-main);">{{ repuesto.ubicacion|default:"Sin asignar" }}</strong></div>
+            <div class="part-meta">Tarifa IVA SRI: <strong style="color: var(--primary);">{{ repuesto.get_tarifa_iva_display }}</strong></div>
+            
+            {% if repuesto.compatibilidades.all %}
+            <div class="compatibility-list">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Modelos Compatibles:</div>
+                {% for c in repuesto.compatibilidades.all %}
+                <span class="compat-tag">{{ c.marca }} {{ c.modelo }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+            <div>
+                <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Precio (PVP)</span>
+                <span class="part-price">${{ repuesto.precio_venta|floatformat:2 }}</span>
+            </div>
+            <button onclick="openMovimientoModal('{{ repuesto.id }}', '{{ repuesto.nombre }}')" class="btn-premium btn-secondary-premium" style="padding: 0.45rem 0.85rem; font-size: 0.85rem; border-radius: 8px;">
+                <i class="fa-solid fa-boxes-stacked"></i> Ajustar Stock
+            </button>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card-premium" style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem;">
+        <i class="fa-solid fa-box-open" style="font-size: 3rem; color: var(--border-color); margin-bottom: 1rem; display: block;"></i>
+        No se han encontrado repuestos registrados en el inventario.
+    </div>
+    {% endfor %}
+</div>
+
+<!-- MODAL PREMIUM REGISTRAR MOVIMIENTO (KARDEX) -->
+<div id="movimientoModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div class="card-premium" style="width: 500px; max-width: 90%; background-color: var(--bg-card); border-color: rgba(245, 158, 11, 0.3); padding: 2rem;">
+        <h2 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--primary);">
+            <i class="fa-solid fa-boxes-packing"></i>
+            <span>Movimiento de Bodega</span>
+        </h2>
+        
+        <form action="{% url 'taller:bodega_movimiento' %}" method="post">
+            {% csrf_token %}
+            
+            <div style="margin-bottom: 1.2rem;">
+                <label style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Repuesto:*</label>
+                <select id="modal_repuesto_select" name="repuesto_id" class="input-premium" required>
+                    <option value="">-- Seleccione un Repuesto --</option>
+                    {% for r in repuestos %}
+                    <option value="{{ r.id }}">{{ r.nombre }} (SKU: {{ r.sku }}) - Stock actual: {{ r.stock }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem;">
+                <div>
+                    <label style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Tipo Movimiento:*</label>
+                    <select name="tipo_movimiento" class="input-premium" required>
+                        <option value="INGRESO_COMPRA">Ingreso por Compra</option>
+                        <option value="INGRESO_DEVOLUCION">Ingreso por Devolución</option>
+                        <option value="AJUSTE_POSITIVO">Ajuste (Sobrante)</option>
+                        <option value="EGRESO_VENTA">Egreso por Venta</option>
+                        <option value="AJUSTE_NEGATIVO">Ajuste (Merma/Faltante)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Cantidad:*</label>
+                    <input type="number" name="cantidad" class="input-premium" min="1" value="1" required>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <label style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Observación / Motivo:</label>
+                <textarea name="motivo" class="input-premium" rows="3" placeholder="Ej: Compra según factura #1234 o ajuste por inventario físico anual."></textarea>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                <button type="button" onclick="closeMovimientoModal()" class="btn-premium btn-secondary-premium" style="padding: 0.6rem 1.2rem;">Cancelar</button>
+                <button type="submit" class="btn-premium" style="padding: 0.6rem 1.2rem;">Guardar Cambios</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .btn-category {
+        background-color: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        padding: 0.35rem 0.85rem;
+        border-radius: 8px;
+        font-family: var(--font-main);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    .btn-category:hover, .btn-category.active {
+        color: var(--text-main);
+        background-color: var(--border-color);
+    }
+    .btn-category.active {
+        border-color: var(--primary);
+        box-shadow: 0 0 8px var(--primary-glow);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('searchInput');
+        const compatFilter = document.getElementById('compatFilter');
+        const catButtons = document.querySelectorAll('.btn-category');
+        const partsCatalog = document.getElementById('partsCatalog');
+        const cards = partsCatalog.querySelectorAll('.part-card');
+        
+        let currentCategory = 'ALL';
+
+        function filterCatalog() {
+            const query = searchInput.value.toLowerCase().trim();
+            const compatId = compatFilter.value;
+
+            cards.forEach(card => {
+                const sku = card.getAttribute('data-sku');
+                const name = card.getAttribute('data-name');
+                const brand = card.getAttribute('data-brand');
+                const cat = card.getAttribute('data-cat');
+                const compats = card.getAttribute('data-compats').split(',');
+
+                const matchesText = sku.includes(query) || name.includes(query) || brand.includes(query);
+                const matchesCompat = (compatId === 'ALL') || compats.includes(compatId);
+                const matchesCat = (currentCategory === 'ALL') || (cat === currentCategory);
+
+                if (matchesText && matchesCompat && matchesCat) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        searchInput.addEventListener('input', filterCatalog);
+        compatFilter.addEventListener('change', filterCatalog);
+        
+        catButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                catButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentCategory = btn.getAttribute('data-cat');
+                filterCatalog();
+            });
+        });
+    });
+
+    const modal = document.getElementById('movimientoModal');
+    const select = document.getElementById('modal_repuesto_select');
+
+    function openMovimientoModal(repuestoId, repuestoNombre) {
+        modal.style.display = 'flex';
+        if (repuestoId) {
+            select.value = repuestoId;
+        } else {
+            select.value = "";
+        }
+    }
+
+    function closeMovimientoModal() {
+        modal.style.display = 'none';
+    }
+</script>
+{% endblock %}

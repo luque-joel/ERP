@@ -1,0 +1,135 @@
+{% extends 'taller/base.html' %}
+
+{% block title %}Órdenes de Trabajo | MotoTaller ERP{% endblock %}
+
+{% block content %}
+<div class="header-section">
+    <div>
+        <h1 class="title-main">Órdenes de Trabajo</h1>
+        <p class="subtitle-main">Gestione e imprima las recepciones y hojas de mantenimiento del taller.</p>
+    </div>
+    <div>
+        <a href="{% url 'taller:orden_create' %}" class="btn-premium">
+            <i class="fa-solid fa-plus"></i>
+            <span>Nueva Orden de Trabajo</span>
+        </a>
+    </div>
+</div>
+
+<!-- Filtros de Estado rápidos -->
+<div class="card-premium" style="margin-bottom: 2rem; padding: 1.2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <a href="?estado=ALL" class="btn-filter {% if current_filter == 'ALL' %}active{% endif %}">Todas</a>
+            <a href="?estado=PENDIENTE" class="btn-filter {% if current_filter == 'PENDIENTE' %}active{% endif %}">Pendientes</a>
+            <a href="?estado=EN_PROCESO" class="btn-filter {% if current_filter == 'EN_PROCESO' %}active{% endif %}">En Proceso</a>
+            <a href="?estado=ESPERANDO_REPUESTOS" class="btn-filter {% if current_filter == 'ESPERANDO_REPUESTOS' %}active{% endif %}">Esperando Repuestos</a>
+            <a href="?estado=TERMINADO" class="btn-filter {% if current_filter == 'TERMINADO' %}active{% endif %}">Terminadas</a>
+            <a href="?estado=ENTREGADO" class="btn-filter {% if current_filter == 'ENTREGADO' %}active{% endif %}">Entregadas</a>
+        </div>
+        <div>
+            <span style="font-size: 0.9rem; color: var(--text-muted);">
+                Total: <strong>{{ ordenes|length }}</strong> órdenes encontradas
+            </span>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de Órdenes -->
+<div class="card-premium">
+    <div class="table-container">
+        <table class="table-premium">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Ingreso</th>
+                    <th>Tipo</th>
+                    <th>Vehículo (Placa)</th>
+                    <th>Cliente</th>
+                    <th>Mecánico</th>
+                    <th>Estado</th>
+                    <th>Costo Est.</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for orden in ordenes %}
+                <tr>
+                    <td style="font-weight: 700; color: var(--primary);">{{ orden.codigo_orden }}</td>
+                    <td>{{ orden.fecha_ingreso|date:"d/m/Y H:i" }}</td>
+                    <td style="font-size: 1.2rem; text-align: center;">
+                        {% if orden.vehiculo.tipo == 'MOTO' %}🏍️{% else %}🛺{% endif %}
+                    </td>
+                    <td>
+                        {{ orden.vehiculo.marca }} {{ orden.vehiculo.modelo }}
+                        {% if orden.vehiculo.placa %}
+                        <code style="background-color: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color); font-size: 0.85em; font-weight: bold; margin-left: 0.5rem;">
+                            {{ orden.vehiculo.placa }}
+                        </code>
+                        {% else %}
+                        <span style="color: var(--text-muted); font-size: 0.85em; font-style: italic;">Sin Placa</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ orden.vehiculo.cliente.nombre }}</td>
+                    <td>{{ orden.mecanico.nombre|default:"Sin Asignar" }}</td>
+                    <td>
+                        {% if orden.estado == 'PENDIENTE' %}
+                            <span class="badge-status badge-pendiente">Pendiente</span>
+                        {% elif orden.estado == 'EN_PROCESO' %}
+                            <span class="badge-status badge-proceso">En Reparación</span>
+                        {% elif orden.estado == 'ESPERANDO_REPUESTOS' %}
+                            <span class="badge-status badge-esperando">Falta Repuesto</span>
+                        {% elif orden.estado == 'TERMINADO' %}
+                            <span class="badge-status badge-terminado">Terminado</span>
+                        {% elif orden.estado == 'ENTREGADO' %}
+                            <span class="badge-status badge-entregado">Entregado</span>
+                        {% elif orden.estado == 'ANULADO' %}
+                            <span class="badge-status badge-entregado" style="background-color: rgba(220,53,69,0.15); color: #ff6b6b;">Anulado</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 800; color: var(--text-main);">${{ orden.total_general|floatformat:2 }}</td>
+                    <td>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <a href="{% url 'taller:orden_detail' orden.id %}" class="btn-premium btn-secondary-premium" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-radius: 8px; width: 100%; text-align: center; justify-content: center;">
+                                <i class="fa-solid fa-eye"></i> Gestionar Orden
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                        <i class="fa-solid fa-folder-open" style="font-size: 3rem; color: var(--border-color); margin-bottom: 1rem; display: block;"></i>
+                        No se encontraron órdenes de trabajo registradas con este filtro.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .btn-filter {
+        display: inline-block;
+        background-color: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        padding: 0.4rem 1rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-family: var(--font-main);
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: var(--transition);
+    }
+    .btn-filter:hover, .btn-filter.active {
+        color: var(--text-main);
+        background-color: var(--border-color);
+    }
+    .btn-filter.active {
+        border-color: var(--primary);
+        box-shadow: 0 0 8px var(--primary-glow);
+    }
+</style>
+{% endblock %}

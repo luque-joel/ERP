@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ERP MotoTaller{% endblock %}</title>
+    <!-- Iconos FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Estilo Premium Carbon & Amber -->
+    <link rel="stylesheet" href="{% static 'taller/css/style.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div>
+                <div class="logo-container">
+                    <i class="fa-solid fa-screwdriver-wrench logo-icon"></i>
+                    <span class="logo-text">MotoTaller ERP</span>
+                </div>
+                <nav>
+                    <ul class="nav-links">
+                        <!-- Dashboard Analítico (Exclusivo para Gerente o Superusuario) -->
+                        {% if request.user.is_superuser or request.user.perfil_empleado.cargo == 'GERENTE' %}
+                        <li class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+                            <a href="{% url 'taller:dashboard' %}">
+                                <i class="fa-solid fa-chart-line"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <!-- Órdenes de Trabajo (Operativa, Gerente o Superusuario) -->
+                        {% if request.user.is_superuser or request.user.perfil_empleado.cargo == 'GERENTE' or request.user.perfil_empleado.cargo == 'OPERATIVO_RECEPCION' %}
+                        <li class="nav-item {% if active_page == 'ordenes' %}active{% endif %}">
+                            <a href="{% url 'taller:orden_list' %}">
+                                <i class="fa-solid fa-clipboard-list"></i>
+                                <span>Órdenes de Trabajo</span>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <!-- Inventario y Kardex (Bodega, Gerente o Superusuario) -->
+                        {% if request.user.is_superuser or request.user.perfil_empleado.cargo == 'GERENTE' or request.user.perfil_empleado.cargo == 'BODEGUERO' %}
+                        <li class="nav-item {% if active_page == 'repuestos' %}active{% endif %}">
+                            <a href="{% url 'taller:repuesto_list' %}">
+                                <i class="fa-solid fa-box-open"></i>
+                                <span>Inventario</span>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <!-- POS / Ventas (Ventas, Gerente o Superusuario) -->
+                        {% if request.user.is_superuser or request.user.perfil_empleado.cargo == 'GERENTE' or request.user.perfil_empleado.cargo == 'VENDEDOR' %}
+                        <li class="nav-item {% if active_page == 'pos' %}active{% endif %}">
+                            <a href="{% url 'taller:pos_console' %}">
+                                <i class="fa-solid fa-cash-register"></i>
+                                <span>POS (Ventas)</span>
+                            </a>
+                        </li>
+                        <li class="nav-item {% if active_page == 'facturas' %}active{% endif %}">
+                            <a href="{% url 'taller:factura_list' %}">
+                                <i class="fa-solid fa-file-invoice"></i>
+                                <span>Facturas Facturador</span>
+                            </a>
+                        </li>
+                        <li class="nav-item {% if active_page == 'reportes' %}active{% endif %}">
+                            <a href="{% url 'taller:reportes' %}">
+                                <i class="fa-solid fa-file-export"></i>
+                                <span>Reportes</span>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <!-- Talento Humano (Admin RRHH, Gerente o Superusuario) -->
+                        {% if request.user.is_superuser or request.user.perfil_empleado.cargo == 'GERENTE' or request.user.perfil_empleado.cargo == 'ADMIN_RRHH' %}
+                        <li class="nav-item {% if active_page == 'rrhh' %}active{% endif %}">
+                            <a href="{% url 'taller:rrhh_console' %}">
+                                <i class="fa-solid fa-people-group"></i>
+                                <span>Talento Humano</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            
+            <div style="border-top: 1px solid var(--border-color); padding-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%); display: flex; align-items: center; justify-content: center; color: var(--bg-dark); font-weight: bold; font-size: 1.1rem; text-transform: uppercase;">
+                        {{ request.user.username|slice:":1" }}
+                    </div>
+                    <div style="flex-grow: 1; overflow: hidden;">
+                        <p style="font-size: 0.9rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ request.user.first_name|default:request.user.username }}</p>
+                        <p style="font-size: 0.75rem; color: var(--text-muted);">
+                            {% if request.user.is_superuser %}
+                                Superusuario
+                            {% else %}
+                                {{ request.user.perfil_empleado.get_cargo_display|default:"Colaborador" }}
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <a href="{% url 'taller:logout' %}" class="btn-premium btn-secondary-premium" style="padding: 0.45rem; font-size: 0.8rem; border-radius: 8px; justify-content: center; width: 100%; display: flex; align-items: center; gap: 0.4rem; border-color: rgba(220,53,69,0.3); color: #ff6b6b; background: rgba(220,53,69,0.02);">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Cerrar Sesión</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

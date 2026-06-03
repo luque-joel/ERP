@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprobante de Venta Electrónico - {{ factura.numero_factura }}</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Courier+Prime&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: hsl(220, 15%, 8%);
+            --bg-card: hsl(220, 12%, 14%);
+            --primary: hsl(38, 92%, 50%);
+            --text-main: hsl(0, 0%, 96%);
+            --text-muted: hsl(220, 10%, 70%);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --font-main: 'Outfit', sans-serif;
+            --font-mono: 'Courier Prime', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            padding: 2rem 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Contenedor del Ticket (Estilo Térmico POS Premium) */
+        .ticket-container {
+            width: 380px;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.75rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .ticket-header {
+            text-align: center;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .ticket-logo {
+            font-size: 2.2rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .ticket-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        .ticket-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: var(--primary);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.25rem;
+            margin-bottom: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-bottom: 0.3rem;
+            line-height: 1.4;
+        }
+
+        .info-label {
+            color: var(--text-muted);
+        }
+
+        .info-value {
+            font-weight: 600;
+            text-align: right;
+            max-width: 60%;
+            word-wrap: break-word;
+        }
+
+        /* Tabla de Ítems tipo Ticket */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            margin: 1rem 0;
+        }
+
+        .items-table th {
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.4rem;
+            color: var(--text-muted);
+            font-weight: normal;
+        }
+
+        .items-table td {
+            padding: 0.5rem 0;
+            vertical-align: top;
+            border-bottom: 1px dashed rgba(255,255,255,0.03);
+        }
+
+        .summary-box {
+            border-top: 1px dashed var(--border-color);
+            padding-top: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .summary-row.total {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--primary);
+            border-top: 1px solid var(--border-color);
+            padding-top: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Botón flotante para regresar o imprimir */
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.6rem 1.2rem;
+            font-family: var(--font-main);
+            font-weight: 700;
+            font-size: 0.85rem;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-print {
+            background-color: var(--primary);
+            color: var(--bg-dark);
+        }
+
+        .btn-back {
+            background-color: rgba(255,255,255,0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-action:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.1);
+        }
+
+        /* ESTILOS DE IMPRESIÓN MÁXIMA COMPATIBILIDAD A BOLETERA POS */
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+            }
+            .ticket-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+            }
+            .action-bar {
+                display: none !important;
+            }
+            :root {
+                --text-main: black !important;
+                --text-muted: #333 !important;
+                --border-color: black !important;
+            }
+            .items-table td, .items-table th {
+                color: black !important;
+                border-color: black !important;
+            }
+            .summary-row.total {
+                color: black !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div>
+    <div class="ticket-container">
+        <!-- CABECERA -->
+        <div class="ticket-header">
+            <div class="ticket-logo"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            <h2 class="ticket-title">{{ establecimiento }}</h2>
+            <p class="ticket-subtitle">{{ matriz }}</p>
+            <p class="ticket-subtitle" style="margin-top: 0.25rem;"><strong>RUC:</strong> {{ ruc_emisor }}</p>
+        </div>
+
+        <!-- DATOS DEL COMPROBANTE -->
+        <div class="section-title">Comprobante Electrónico</div>
+        <div class="info-row">
+            <span class="info-label">Factura No:</span>
+            <span class="info-value">{{ factura.numero_factura }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Ambiente:</span>
+            <span class="info-value">{% if factura.ambiente == '1' %}PRUEBAS{% else %}PRODUCCIÓN{% endif %}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Emisión:</span>
+            <span class="info-value">NORMAL</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Contribuyente:</span>
+            <span class="info-value">{{ contribuyente_regimen }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Lleva Contabilidad:</span>
+            <span class="info-value">{{ obligado_contabilidad }}</span>
+        </div>
+
+        <!-- DATOS ADMISIÓN CLIENTE -->
+        <div class="section-title">Adquiriente</div>
+        <div class="info-row">
+            <span class="info-label">Razón Social:</span>
+            <span class="info-value">{{ factura.cliente.nombre }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Cédula / RUC:</span>
+            <span class="info-value">{{ factura.cliente.cedula_ruc }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Fecha Emisión:</span>
+            <span class="info-value">{{ factura.fecha_emision|date:"d/m/Y H:i" }}</span>
+        </div>
+
+        <!-- TABLA DE DETALLES -->
+        <div class="section-title">Detalle de Ítems</div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">Cant</th>
+                    <th style="width: 65%;">Descripción</th>
+                    <th style="width: 25%; text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for det in factura.detalles.all %}
+                <tr>
+                    <td>{{ det.cantidad }}</td>
+                    <td>
+                        {% if det.repuesto %}
+                            {{ det.repuesto.nombre }}
+                        {% else %}
+                            {{ det.servicio_mano_obra }}
+                        {% endif %}
+                        <br>
+                        <span style="font-size: 0.85em; color: var(--text-muted);">x${{ det.precio_unitario|floatformat:2 }}</span>
+                    </td>
+                    <td style="text-align: right;">${{ det.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- TOTALES KARDEX Y SRI -->
+        <div class="summary-box">
+            <div class="summary-row">
+                <span>Subtotal 15% (Con IVA):</span>
+                <span>${{ factura.subtotal_15|floatformat:2 }}</span>
+            </div>
+            <div class="summary-row">
+                <span>Subtotal 0% (Sin IVA):</span>
+                <span>${{ factura.subtotal_0|floatformat:2 }}</span>
+            </div>
+            <div class="summary-row" style="color: hsl(0, 85%, 65%);">
+                <span>Descuento aplicado:</span>
+                <span>-${{ factura.total_descuento|floatformat:2 }}</span>
+            </div>
+            <div class="summary-row">
+                <span>IVA 15%:</span>
+                <span>${{ factura.valor_iva|floatformat:2 }}</span>
+            </div>
+            
+            <div class="summary-row total">
+                <span>TOTAL A PAGAR:</span>
+                <span>${{ factura.total_pagar|floatformat:2 }}</span>
+            </div>
+        </div>
+
+        <!-- FORMA DE PAGO SRI -->
+        <div class="section-title">Forma de Pago</div>
+        {% for p in factura.pagos.all %}
+        <div class="info-row">
+            <span class="info-label">{{ p.get_metodo_display }}</span>
+            <span class="info-value">${{ p.monto|floatformat:2 }}</span>
+        </div>
+        {% endfor %}
+
+        <!-- CLAVE DE ACCESO SRI PENDIENTE/AUTORIZADO -->
+        {% if factura.clave_acceso %}
+        <div class="section-title">Clave de Acceso SRI</div>
+        <p style="font-family: var(--font-mono); font-size: 0.65rem; word-break: break-all; text-align: center; color: var(--text-muted); line-height: 1.3; margin-top: 0.5rem; letter-spacing: 0.5px;">
+            {{ factura.clave_acceso }}
+        </p>
+        {% endif %}
+        
+        <p style="font-size: 0.75rem; text-align: center; margin-top: 1.5rem; color: var(--text-muted); font-style: italic;">
+            *** Gracias por su confianza ***
+        </p>
+    </div>
+
+    <!-- ACCIONES DE TICKET -->
+    <div class="action-bar">
+        <a href="{% url 'taller:pos_console' %}" class="btn-action btn-back">
+            <i class="fa-solid fa-cart-shopping"></i> Nuevo Cobro
+        </a>
+        <a href="{% url 'taller:factura_list' %}" class="btn-action btn-back">
+            <i class="fa-solid fa-file-invoice"></i> Archivo
+        </a>
+        <button onclick="window.print()" class="btn-action btn-print">
+            <i class="fa-solid fa-print"></i> Imprimir Comprobante
+        </button>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,343 @@
+{% extends 'taller/base.html' %}
+
+{% block title %}Orden {{ orden.codigo_orden }} | MotoTaller ERP{% endblock %}
+
+{% block content %}
+<!-- Mensajes del Taller -->
+{% if messages %}
+<div style="margin-bottom: 2rem; display: flex; flex-direction: column; gap: 0.75rem;">
+    {% for message in messages %}
+    <div style="padding: 1rem; border-radius: 12px; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; 
+        {% if message.tags == 'success' %}
+            background-color: rgba(25, 135, 84, 0.15); color: hsl(145, 75%, 55%); border: 1px solid rgba(25, 135, 84, 0.3);
+        {% else %}
+            background-color: rgba(220, 53, 69, 0.15); color: hsl(0, 85%, 65%); border: 1px solid rgba(220, 53, 69, 0.3);
+        {% endif %}">
+        <i class="fa-solid {% if message.tags == 'success' %}fa-circle-check{% else %}fa-circle-xmark{% endif %}"></i>
+        <span>{{ message }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="header-section">
+    <div>
+        <a href="{% url 'taller:orden_list' %}" style="color: var(--primary); text-decoration: none; font-size: 0.95rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <i class="fa-solid fa-arrow-left"></i> Volver al listado
+        </a>
+        <h1 class="title-main">Orden de Trabajo: {{ orden.codigo_orden }}</h1>
+        <p class="subtitle-main">Registrada el {{ orden.fecha_ingreso|date:"d/m/Y H:i" }}</p>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+        <button onclick="window.print();" class="btn-premium btn-secondary-premium">
+            <i class="fa-solid fa-print"></i>
+            <span>Imprimir Recibo</span>
+        </button>
+        {% if orden.estado == 'TERMINADO' and not orden.facturada %}
+        <a href="{% url 'taller:pos_console' %}?orden_id={{ orden.id }}" class="btn-premiumpulse btn-premium" style="background: linear-gradient(135deg, hsl(145, 75%, 45%) 0%, hsl(145, 75%, 35%) 100%); box-shadow: 0 4px 15px rgba(25, 135, 84, 0.4);">
+            <i class="fa-solid fa-cash-register"></i>
+            <span>Cobrar en POS (Facturar)</span>
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-grid">
+    <!-- Columna Izquierda: Información de la Orden, Cliente y Vehículo -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <!-- Caja Cliente y Vehículo -->
+        <div class="client-vehicle-box">
+            <!-- Cliente -->
+            <div class="card-premium">
+                <h3 style="font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.85rem; color: var(--primary);">
+                    <i class="fa-solid fa-user"></i> Datos del Cliente
+                </h3>
+                <p style="margin-bottom: 0.25rem;">Nombre: <strong>{{ orden.vehiculo.cliente.nombre }}</strong></p>
+                <p style="margin-bottom: 0.25rem;">Identificación SRI: <strong>{{ orden.vehiculo.cliente.get_tipo_identificacion_display }}</strong></p>
+                <p style="margin-bottom: 0.25rem;">Nº Documento: <strong>{{ orden.vehiculo.cliente.cedula_ruc }}</strong></p>
+                <p style="margin-bottom: 0.25rem;">Teléfono: <strong>{{ orden.vehiculo.cliente.telefono|default:"-" }}</strong></p>
+                <p style="margin-bottom: 0.25rem;">Email: <strong>{{ orden.vehiculo.cliente.email|default:"-" }}</strong></p>
+                <p style="margin-bottom: 0.25rem; font-size: 0.9rem; color: var(--text-muted);">Dirección: {{ orden.vehiculo.cliente.direccion|default:"-" }}</p>
+            </div>
+            
+            <!-- Vehículo -->
+            <div class="card-premium">
+                <h3 style="font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 0.85rem; color: var(--primary);">
+                    <i class="fa-solid fa-motorcycle"></i> Datos del Vehículo
+                </h3>
+                <p style="margin-bottom: 0.25rem;">Tipo: <strong>{{ orden.vehiculo.get_tipo_display }}</strong></p>
+                <p style="margin-bottom: 0.25rem;">Marca / Modelo: <strong>{{ orden.vehiculo.marca }} {{ orden.vehiculo.modelo }}</strong></p>
+                <p style="margin-bottom: 0.25rem;">Año: <strong>{{ orden.vehiculo.anio|default:"-" }}</strong></p>
+                <p style="margin-bottom: 0.25rem;">Placa: <code style="background-color: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; font-weight: bold; border: 1px solid var(--border-color);">{{ orden.vehiculo.placa|default:"SIN PLACA" }}</code></p>
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: var(--text-muted);">Motor: {{ orden.vehiculo.numero_motor|default:"-" }} | Chasis: {{ orden.vehiculo.numero_chasis|default:"-" }}</p>
+            </div>
+        </div>
+
+        <!-- Recepción y Falla -->
+        <div class="card-premium">
+            <h3 style="font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; color: var(--primary);">
+                <i class="fa-solid fa-clipboard-check"></i> Checklist de Recepción
+            </h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1rem;">
+                <div>
+                    <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0.25rem;">Kilometraje al Ingresar</p>
+                    <p style="font-size: 1.1rem; font-weight: bold;">{{ orden.kilometraje }} Km</p>
+                </div>
+                <div>
+                    <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0.25rem;">Nivel de Gasolina</p>
+                    <p style="font-size: 1.1rem; font-weight: bold;"><i class="fa-solid fa-gas-pump" style="color: var(--primary);"></i> {{ orden.nivel_combustible }}</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 1rem;">
+                <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0.25rem;">Falla Reportada por el Cliente</p>
+                <div style="background-color: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); font-style: italic;">
+                    "{{ orden.observaciones_recepcion|default:"Sin observaciones registradas." }}"
+                </div>
+            </div>
+
+            {% if checklist %}
+            <div style="margin-top: 1.5rem;">
+                <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0.5rem;">Checklist del Estado del Vehículo</p>
+                <div class="checklist-container">
+                    {% for item, estado in checklist.items %}
+                    <div class="checklist-item">
+                        <span style="font-size: 0.9rem; font-weight: 600;">{{ item|replace:"_, "|title }}</span>
+                        {% if estado %}
+                        <span class="badge-status badge-terminado" style="padding: 0.15rem 0.5rem; font-size: 0.7em;">RECIBIDO</span>
+                        {% else %}
+                        <span class="badge-status badge-esperando" style="padding: 0.15rem 0.5rem; font-size: 0.7em;">FALTANTE</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Repuestos Utilizados -->
+        <div class="card-premium">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--primary); margin: 0;">
+                    <i class="fa-solid fa-list-check"></i> Repuestos Instalados
+                </h3>
+                {% if orden.estado != 'ENTREGADO' %}
+                <button onclick="document.getElementById('addPartSection').style.display='block';" class="btn-premium" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                    <i class="fa-solid fa-plus"></i> Instalar Repuesto
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Sección de agregar repuesto (Oculta por defecto) -->
+            <div id="addPartSection" style="display: none; background-color: rgba(255, 255, 255, 0.02); padding: 1rem; border-radius: 12px; border: 1px dashed var(--primary); margin-bottom: 1rem;">
+                <form method="POST" action="{% url 'taller:orden_agregar_repuesto' orden.id %}">
+                    {% csrf_token %}
+                    <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 1rem; align-items: end;">
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Buscar repuesto en bodega:</label>
+                            <select name="repuesto_id" class="input-premium" required style="padding: 0.5rem;">
+                                <option value="">-- Seleccione el repuesto --</option>
+                                {% for r in repuestos %}
+                                <option value="{{ r.id }}" {% if r.stock <= 0 %}disabled{% endif %}>
+                                    {{ r.nombre }} ({% if r.marca %}{{ r.marca }}{% else %}Genérico{% endif %}) - Stock: {{ r.stock }} - [PVP: ${{ r.precio_venta }}]
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Cantidad:</label>
+                            <input type="number" name="cantidad" class="input-premium" value="1" min="1" required style="padding: 0.5rem;">
+                        </div>
+                        <div>
+                            <button type="submit" class="btn-premium" style="padding: 0.6rem 1rem;">Agregar</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="table-container">
+                <table class="table-premium">
+                    <thead>
+                        <tr>
+                            <th>Código SKU</th>
+                            <th>Repuesto</th>
+                            <th>Cant.</th>
+                            <th>Precio Unit.</th>
+                            <th style="text-align: right;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in orden.repuestos_utilizados.all %}
+                        <tr>
+                            <td style="font-family: monospace; font-weight: bold; color: var(--text-muted);">{{ item.repuesto.sku }}</td>
+                            <td style="font-weight: 600;">{{ item.repuesto.nombre }}</td>
+                            <td>{{ item.cantidad }}</td>
+                            <td>${{ item.precio_historico|floatformat:2 }}</td>
+                            <td style="text-align: right; font-weight: bold;">${{ item.subtotal|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                No se han cargado repuestos a esta orden de trabajo todavía.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Derecha: Control de Reparación y Totales -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <!-- Estado Actual y Modificación -->
+        <div class="card-premium">
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--primary);">Consola de Estado</h3>
+            
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; background-color: rgba(0,0,0,0.15); padding: 0.75rem; border-radius: 10px; border: 1px solid var(--border-color);">
+                <span style="font-size: 0.9rem;">Estado actual:</span>
+                <div>
+                    {% if orden.estado == 'PENDIENTE' %}
+                        <span class="badge-status badge-pendiente" style="padding: 0.3rem 0.8rem;">Pendiente</span>
+                    {% elif orden.estado == 'EN_PROCESO' %}
+                        <span class="badge-status badge-proceso" style="padding: 0.3rem 0.8rem;">En Reparación</span>
+                    {% elif orden.estado == 'ESPERANDO_REPUESTOS' %}
+                        <span class="badge-status badge-esperando" style="padding: 0.3rem 0.8rem;">Falta Repuestos</span>
+                    {% elif orden.estado == 'TERMINADO' %}
+                        <span class="badge-status badge-terminado" style="padding: 0.3rem 0.8rem;">Terminado</span>
+                    {% elif orden.estado == 'ENTREGADO' %}
+                        <span class="badge-status badge-entregado" style="padding: 0.3rem 0.8rem;">Entregado / Facturado</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <p style="margin-bottom: 0.25rem; font-size: 0.9rem; color: var(--text-muted);">Mecánico Asignado:</p>
+            <p style="font-weight: 700; font-size: 1.1rem; margin-bottom: 1.2rem;">
+                <i class="fa-solid fa-user-gear" style="color: var(--primary);"></i> 
+                {{ orden.mecanico.nombre|default:"Sin asignar / Recepción" }}
+            </p>
+
+            <!-- FORMULARIO OPERATIVO COMPLETO -->
+            {% if orden.estado != 'ENTREGADO' %}
+            <form method="POST" action="{% url 'taller:orden_update_status' orden.id %}" style="border-top: 1px solid var(--border-color); padding-top: 1.2rem;">
+                {% csrf_token %}
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Actualizar Estado:</label>
+                    <select name="estado" class="input-premium" style="padding: 0.5rem; font-size: 0.9rem;">
+                        <option value="PENDIENTE" {% if orden.estado == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                        <option value="EN_PROCESO" {% if orden.estado == 'EN_PROCESO' %}selected{% endif %}>En Reparación</option>
+                        <option value="ESPERANDO_REPUESTOS" {% if orden.estado == 'ESPERANDO_REPUESTOS' %}selected{% endif %}>Esperando Repuestos</option>
+                        <option value="TERMINADO" {% if orden.estado == 'TERMINADO' %}selected{% endif %}>Trabajo Terminado</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 1rem;">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Re-Asignar Mecánico:</label>
+                    <select name="mecanico_id" class="input-premium" style="padding: 0.5rem; font-size: 0.9rem;">
+                        <option value="">-- Dejar sin asignar --</option>
+                        {% for m in mecanicos %}
+                        <option value="{{ m.id }}" {% if orden.mecanico.id == m.id %}selected{% endif %}>{{ m.nombre }} ({{ m.get_estado_display }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 1rem;">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Costo Mano de Obra ($):</label>
+                    <input type="number" step="0.01" name="mano_obra" class="input-premium" value="{{ orden.mano_obra }}" style="padding: 0.5rem; font-size: 0.9rem;">
+                </div>
+
+                <div style="margin-bottom: 1.2rem;">
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Diagnóstico / Tareas realizadas:</label>
+                    <textarea name="diagnostico" class="input-premium" rows="3" style="padding: 0.5rem; font-size: 0.9rem;">{{ orden.diagnostico }}</textarea>
+                </div>
+                
+                <button type="submit" class="btn-premium" style="width: 100%; justify-content: center; padding: 0.75rem;">
+                    <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios Taller
+                </button>
+            </form>
+            {% else %}
+            <div style="padding: 1rem; background-color: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-muted); font-size: 0.9rem; text-align: center;">
+                <i class="fa-solid fa-lock"></i> La orden ha sido entregada y facturada. No se admiten más modificaciones operativas.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Presupuesto y Liquidación -->
+        <div class="card-premium">
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--primary);">Resumen Contable</h3>
+            
+            <div class="summary-cost-box" style="margin-top: 0; background-color: rgba(245,158,11,0.02); border-color: rgba(245,158,11,0.3);">
+                <div class="cost-row">
+                    <span>Mano de Obra:</span>
+                    <strong>${{ orden.mano_obra|floatformat:2 }}</strong>
+                </div>
+                <div class="cost-row">
+                    <span>Total Repuestos:</span>
+                    <strong>${{ orden.total_repuestos|floatformat:2 }}</strong>
+                </div>
+                <div class="cost-row total" style="border-top: 1px dashed var(--primary); padding-top: 0.75rem; margin-top: 0.5rem;">
+                    <span>Total Estimado:</span>
+                    <span>${{ orden.total_general|floatformat:2 }}</span>
+                </div>
+            </div>
+            
+            {% if orden.facturada %}
+            <div style="margin-top: 1rem; text-align: center;">
+                <span class="badge-status badge-terminado" style="display: block; width: 100%; text-align: center; padding: 0.5rem;"><i class="fa-solid fa-file-circle-check"></i> FACTURADA Y ENTREGADA</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Estilos especiales de impresión incorporados -->
+<style>
+    @media print {
+        body {
+            background-color: white !important;
+            color: black !important;
+        }
+        .sidebar, .header-section, form, .btn-premium, #addPartSection, button {
+            display: none !important;
+        }
+        .app-container {
+            display: block !important;
+            min-height: auto !important;
+        }
+        .main-content {
+            padding: 0 !important;
+            background: none !important;
+        }
+        .card-premium {
+            border: none !important;
+            box-shadow: none !important;
+            background-color: white !important;
+            color: black !important;
+            padding: 0 !important;
+            margin-bottom: 1.5rem !important;
+        }
+        .table-premium th {
+            color: black !important;
+            background-color: #f2f2f2 !important;
+            border-bottom: 2px solid black !important;
+        }
+        .table-premium td {
+            color: black !important;
+            border-bottom: 1px solid #ccc !important;
+        }
+        .summary-cost-box {
+            border: 2px solid black !important;
+            background-color: white !important;
+            color: black !important;
+        }
+        .cost-row.total {
+            color: black !important;
+            border-top: 2px solid black !important;
+        }
+        .detail-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+</style>
+{% endblock %}

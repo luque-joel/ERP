@@ -1,0 +1,223 @@
+{% extends 'taller/base.html' %}
+
+{% block title %}Reportes Automatizados | MotoTaller ERP{% endblock %}
+
+{% block content %}
+<div class="header-section">
+    <div>
+        <h1 class="title-main">Reportes y Exportación</h1>
+        <p class="subtitle-main">Consola de exportación automatizada de reportes de compras y ventas para gerencia y ventas.</p>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+        <button onclick="window.print();" class="btn-premium btn-secondary-premium">
+            <i class="fa-solid fa-print"></i> Imprimir Vista
+        </button>
+    </div>
+</div>
+
+<!-- Filtros de Reporte -->
+<div class="card-premium" style="margin-bottom: 2rem;">
+    <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--primary);">
+        <i class="fa-solid fa-filter"></i>
+        <span>Rango de Fecha del Reporte</span>
+    </h2>
+    <form method="GET" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) 150px; gap: 1.5rem; align-items: end;">
+        <div class="form-group-premium">
+            <label for="fecha_inicio" style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Fecha de Inicio</label>
+            <input type="date" id="fecha_inicio" name="fecha_inicio" value="{{ fecha_inicio }}" class="input-premium" style="width: 100%;" required>
+        </div>
+        <div class="form-group-premium">
+            <label for="fecha_fin" style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">Fecha Fin</label>
+            <input type="date" id="fecha_fin" name="fecha_fin" value="{{ fecha_fin }}" class="input-premium" style="width: 100%;" required>
+        </div>
+        <div class="form-group-premium">
+            <button type="submit" class="btn-premium" style="width: 100%; height: 42px; justify-content: center; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-sync"></i> Actualizar
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- KPIs del Rango Seleccionado -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <!-- Ventas Totales -->
+    <div class="card-premium" style="border-left: 4px solid var(--status-success); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; height: 130px;">
+        <div>
+            <p style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Ventas Totales</p>
+            <h3 style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin-top: 0.5rem;">${{ kpis.total_ventas|floatformat:2 }}</h3>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--text-muted);">{{ kpis.cant_ventas }} Facturas Pagadas</p>
+        <i class="fa-solid fa-sack-dollar" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.5rem; opacity: 0.05; color: var(--status-success);"></i>
+    </div>
+
+    <!-- Compras Totales -->
+    <div class="card-premium" style="border-left: 4px solid var(--status-pending); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; height: 130px;">
+        <div>
+            <p style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Compras Totales</p>
+            <h3 style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin-top: 0.5rem;">${{ kpis.total_compras|floatformat:2 }}</h3>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--text-muted);">{{ kpis.cant_compras }} Órdenes Recibidas</p>
+        <i class="fa-solid fa-cart-shopping" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.5rem; opacity: 0.05; color: var(--status-pending);"></i>
+    </div>
+
+    <!-- IVA en Ventas -->
+    <div class="card-premium" style="border-left: 4px solid var(--primary); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; height: 130px;">
+        <div>
+            <p style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">IVA Cobrado</p>
+            <h3 style="font-size: 1.8rem; font-weight: 800; color: var(--primary); margin-top: 0.5rem;">${{ kpis.iva_ventas|floatformat:2 }}</h3>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--text-muted);">15% IVA local</p>
+        <i class="fa-solid fa-percent" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.5rem; opacity: 0.05; color: var(--primary);"></i>
+    </div>
+
+    <!-- Balance Neto -->
+    <div class="card-premium" style="border-left: 4px solid var(--text-main); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; height: 130px;">
+        <div>
+            <p style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">Balance del Período</p>
+            <h3 style="font-size: 1.8rem; font-weight: 800; color: {% if kpis.balance >= 0 %}hsl(145, 75%, 55%){% else %}#ff6b6b{% endif %}; margin-top: 0.5rem;">
+                ${{ kpis.balance|floatformat:2 }}
+            </h3>
+        </div>
+        <p style="font-size: 0.75rem; color: var(--text-muted);">Ventas - Compras</p>
+        <i class="fa-solid fa-scale-balanced" style="position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 2.5rem; opacity: 0.05;"></i>
+    </div>
+</div>
+
+<!-- Acciones de Exportación -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+    <!-- Exportar Ventas -->
+    <div class="card-premium" style="border: 1px solid rgba(245, 158, 11, 0.1); background: linear-gradient(135deg, var(--bg-card) 0%, rgba(245, 158, 11, 0.02) 100%);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1.5rem;">
+            <div>
+                <h3 style="font-size: 1.3rem; font-weight: 700; color: var(--text-main);"><i class="fa-solid fa-file-invoice-dollar" style="color: var(--primary); margin-right: 0.5rem;"></i> Reporte de Ventas (Facturas)</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">Reportes detallados de la facturación y ventas directas por caja.</p>
+            </div>
+            <span style="background: rgba(245,158,11,0.1); color: var(--primary); font-size: 0.7rem; font-weight: bold; padding: 0.25rem 0.6rem; border-radius: 20px;">Ventas</span>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <a href="{% url 'taller:export_ventas_pdf' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn-premium" style="flex: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; background: #dc3545; color: #fff;">
+                <i class="fa-solid fa-file-pdf"></i> Exportar PDF
+            </a>
+            <a href="{% url 'taller:export_ventas_excel' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn-premium" style="flex: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; background: #198754; color: #fff;">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- Exportar Compras -->
+    <div class="card-premium" style="border: 1px solid rgba(245, 158, 11, 0.1); background: linear-gradient(135deg, var(--bg-card) 0%, rgba(245, 158, 11, 0.02) 100%);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1.5rem;">
+            <div>
+                <h3 style="font-size: 1.3rem; font-weight: 700; color: var(--text-main);"><i class="fa-solid fa-cart-flatbed" style="color: var(--primary); margin-right: 0.5rem;"></i> Reporte de Compras (Proveedores)</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">Reportes detallados de compras a proveedores e ingresos en stock.</p>
+            </div>
+            <span style="background: rgba(245,158,11,0.1); color: var(--primary); font-size: 0.7rem; font-weight: bold; padding: 0.25rem 0.6rem; border-radius: 20px;">Compras</span>
+        </div>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <a href="{% url 'taller:export_compras_pdf' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn-premium" style="flex: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; background: #dc3545; color: #fff;">
+                <i class="fa-solid fa-file-pdf"></i> Exportar PDF
+            </a>
+            <a href="{% url 'taller:export_compras_excel' %}?fecha_inicio={{ fecha_inicio }}&fecha_fin={{ fecha_fin }}" class="btn-premium" style="flex: 1; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; background: #198754; color: #fff;">
+                <i class="fa-solid fa-file-excel"></i> Exportar Excel
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla Resumen de Transacciones del Periodo -->
+<div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
+    <!-- Vista Previa Ventas -->
+    <div class="card-premium">
+        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1.2rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i> Vista Previa de Ventas Recientes en el Período
+        </h3>
+        <div class="table-container">
+            <table class="table-premium">
+                <thead>
+                    <tr>
+                        <th>Secuencial</th>
+                        <th>Fecha de Emisión</th>
+                        <th>Cliente</th>
+                        <th>Subtotal (15%)</th>
+                        <th>Descuento</th>
+                        <th>IVA</th>
+                        <th>Total</th>
+                        <th>Estado SRI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in preview_ventas %}
+                    <tr>
+                        <td style="font-weight: bold; color: var(--primary);">{{ v.numero_factura }}</td>
+                        <td>{{ v.fecha_emision|date:"d/m/Y H:i" }}</td>
+                        <td>{{ v.cliente.nombre }}</td>
+                        <td>${{ v.subtotal_15|floatformat:2 }}</td>
+                        <td style="color: #ff6b6b;">${{ v.total_descuento|floatformat:2 }}</td>
+                        <td>${{ v.valor_iva|floatformat:2 }}</td>
+                        <td style="font-weight: 700; color: hsl(145, 75%, 55%);">${{ v.total_pagar|floatformat:2 }}</td>
+                        <td>
+                            {% if v.estado_sri == 'AUTORIZADO' %}
+                                <span class="badge-status badge-terminado" style="font-size: 0.75em; padding: 0.15rem 0.4rem;"><i class="fa-solid fa-circle-check"></i> AUTORIZADO</span>
+                            {% else %}
+                                <span class="badge-status badge-pendiente" style="font-size: 0.75em; padding: 0.15rem 0.4rem;">{{ v.estado_sri }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 2rem;">No hay ventas registradas en este período.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Vista Previa Compras -->
+    <div class="card-premium">
+        <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1.2rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i> Vista Previa de Compras Recientes en el Período
+        </h3>
+        <div class="table-container">
+            <table class="table-premium">
+                <thead>
+                    <tr>
+                        <th>Nº Factura Prov.</th>
+                        <th>Fecha de Compra</th>
+                        <th>Proveedor</th>
+                        <th>Subtotal</th>
+                        <th>IVA</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in preview_compras %}
+                    <tr>
+                        <td style="font-weight: bold; color: var(--primary);">{{ c.documento_referencia|default:"S/N" }}</td>
+                        <td>{{ c.fecha_compra|date:"d/m/Y" }}</td>
+                        <td>{{ c.proveedor.nombre_empresa }}</td>
+                        <td>${{ c.subtotal|floatformat:2 }}</td>
+                        <td>${{ c.iva|floatformat:2 }}</td>
+                        <td style="font-weight: 700; color: #ff6b6b;">${{ c.total|floatformat:2 }}</td>
+                        <td>
+                            {% if c.estado == 'RECIBIDO' %}
+                                <span class="badge-status badge-terminado" style="font-size: 0.75em; padding: 0.15rem 0.4rem;">RECIBIDO</span>
+                            {% else %}
+                                <span class="badge-status badge-pendiente" style="font-size: 0.75em; padding: 0.15rem 0.4rem;">{{ c.estado }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No hay compras registradas en este período.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

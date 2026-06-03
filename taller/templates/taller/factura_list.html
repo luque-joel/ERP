@@ -1,0 +1,79 @@
+{% extends 'taller/base.html' %}
+
+{% block title %}Facturas Emitidas | MotoTaller ERP{% endblock %}
+
+{% block content %}
+<div class="header-section">
+    <div>
+        <h1 class="title-main">Archivo de Facturas</h1>
+        <p class="subtitle-main">Historial de comprobantes emitidos y estado de sincronización con el SRI.</p>
+    </div>
+    <div>
+        <a href="{% url 'taller:pos_console' %}" class="btn-premium">
+            <i class="fa-solid fa-cash-register"></i>
+            <span>Ir a la Caja (POS)</span>
+        </a>
+    </div>
+</div>
+
+<div class="card-premium">
+    <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--primary);">
+        <i class="fa-solid fa-folder-closed"></i>
+        <span>Historial de Comprobantes de Venta</span>
+    </h2>
+
+    <div class="table-container">
+        <table class="table-premium">
+            <thead>
+                <tr>
+                    <th>Nº Comprobante</th>
+                    <th>Fecha Emisión</th>
+                    <th>Cliente</th>
+                    <th>Subtotal (15%)</th>
+                    <th>Subtotal (0%)</th>
+                    <th>IVA Ecu.</th>
+                    <th>Total Pagado</th>
+                    <th>Estado SRI</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in facturas %}
+                <tr>
+                    <td style="font-weight: 700; color: var(--primary);">{{ f.numero_factura }}</td>
+                    <td style="font-size: 0.9rem;">{{ f.fecha_emision|date:"d/m/Y H:i" }}</td>
+                    <td style="font-weight: 600;">{{ f.cliente.nombre }}</td>
+                    <td>${{ f.subtotal_15|floatformat:2 }}</td>
+                    <td>${{ f.subtotal_0|floatformat:2 }}</td>
+                    <td style="color: var(--primary); font-weight: bold;">${{ f.valor_iva|floatformat:2 }}</td>
+                    <td style="font-weight: 800; font-size: 1.05rem; color: hsl(145, 75%, 55%);">${{ f.total_pagar|floatformat:2 }}</td>
+                    <td>
+                        {% if f.estado_sri == 'AUTORIZADO' %}
+                            <span class="badge-status badge-terminado" style="font-size: 0.75em; padding: 0.2rem 0.5rem;" title="Clave: {{ f.clave_acceso }}"><i class="fa-solid fa-circle-check"></i> AUTORIZADO</span>
+                        {% elif f.estado_sri == 'PENDIENTE' %}
+                            <span class="badge-status badge-pendiente" style="font-size: 0.75em; padding: 0.2rem 0.5rem;"><i class="fa-solid fa-clock"></i> PENDIENTE</span>
+                        {% elif f.estado_sri == 'RECHAZADO' %}
+                            <span class="badge-status badge-esperando" style="font-size: 0.75em; padding: 0.2rem 0.5rem;"><i class="fa-solid fa-circle-xmark"></i> RECHAZADO</span>
+                        {% else %}
+                            <span class="badge-status badge-entregado" style="font-size: 0.75em; padding: 0.2rem 0.5rem;">{{ f.estado_sri }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'taller:factura_pdf' f.id %}" class="btn-premium btn-secondary-premium" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; border-radius: 8px;">
+                            <i class="fa-solid fa-print"></i> RIDE / Recibo
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 3rem;">
+                        <i class="fa-solid fa-file-excel" style="font-size: 2.5rem; display: block; margin-bottom: 1rem; color: var(--border-color);"></i>
+                        No se han emitido facturas de venta todavía.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
