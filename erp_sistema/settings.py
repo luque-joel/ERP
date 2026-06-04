@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
+import dj_database_url
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,12 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-9$nt2ww(wf#^)o%issq+cww^yc5rw!tg04i9x$x0rt08di1ug('
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-9$nt2ww(wf#^)o%issq+cww^yc5rw!tg04i9x$x0rt08di1ug(')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 
 # Application definition
@@ -42,6 +44,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -74,14 +77,10 @@ WSGI_APPLICATION = 'erp_sistema.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql', # Indica que usarás PostgreSQL
-        'NAME': 'ERP',      # El nombre de la BD que creaste
-        'USER': 'postgres',          # Por defecto suele ser 'postgres'
-        'PASSWORD': '200226',               # La contraseña de tu usuario
-        'HOST': 'localhost',                       # 'localhost' o '127.0.0.1' si está en tu máquina
-        'PORT': '5432',                            # 5432 es el puerto por defecto de PostgreSQL
-    }
+    'default': dj_database_url.config(
+        default='postgresql://postgres:200226@localhost:5432/ERP',
+        conn_max_age=600
+    )
 }
 
 
@@ -120,3 +119,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
