@@ -78,7 +78,7 @@ WSGI_APPLICATION = 'erp_sistema.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default='postgresql://postgres:200226@localhost:5432/ERP',
+        default=os.environ.get('DATABASE_URL'),
         conn_max_age=600
     )
 }
