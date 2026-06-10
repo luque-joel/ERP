@@ -206,6 +206,8 @@ def orden_detail(request, pk):
     checklist = orden.checklist_json
     if not isinstance(checklist, dict):
         checklist = {}
+    
+    checklist_format = {k.replace('_', ' '): v for k, v in checklist.items()}
         
     repuestos_disponibles = Repuesto.objects.all().order_by('nombre')
     mecánicos = Mecanico.objects.all()
@@ -213,11 +215,12 @@ def orden_detail(request, pk):
     context = {
         'active_page': 'ordenes',
         'orden': orden,
-        'checklist': checklist,
+        'checklist': checklist_format,
         'repuestos': repuestos_disponibles,
         'mecanicos': mecánicos,
     }
     return render(request, 'taller/orden_detail.html', context)
+
 
 @role_required(['OPERATIVO_RECEPCION', 'GERENTE'])
 def orden_update_status(request, pk):

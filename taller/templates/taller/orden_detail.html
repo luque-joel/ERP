@@ -102,7 +102,7 @@
                 <div class="checklist-container">
                     {% for item, estado in checklist.items %}
                     <div class="checklist-item">
-                        <span style="font-size: 0.9rem; font-weight: 600;">{{ item|replace:"_, "|title }}</span>
+                        <span style="font-size: 0.9rem; font-weight: 600;">{{ item|title }}</span>
                         {% if estado %}
                         <span class="badge-status badge-terminado" style="padding: 0.15rem 0.5rem; font-size: 0.7em;">RECIBIDO</span>
                         {% else %}
