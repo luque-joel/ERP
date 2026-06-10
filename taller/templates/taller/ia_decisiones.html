@@ -8,14 +8,14 @@
     /* Estilos Premium Adicionales para IA Decisiones */
     .ia-grid {
         display: grid;
-        grid-template-columns: 2fr 1fr;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
         gap: 1.5rem;
         margin-top: 1.5rem;
     }
     
     @media (max-width: 1024px) {
         .ia-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: minmax(0, 1fr);
         }
     }
     
@@ -59,6 +59,9 @@
         line-height: 1.5;
         font-size: 0.95rem;
         animation: fadeInUp 0.3s ease;
+        word-wrap: break-word;
+        word-break: break-word;
+        overflow-wrap: break-word;
     }
     
     .message-user {
@@ -76,6 +79,21 @@
         align-self: flex-start;
         border-bottom-left-radius: 2px;
         width: 100%;
+        max-width: 100%;
+    }
+
+    .markdown-content {
+        word-wrap: break-word;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+    }
+
+    .markdown-content pre, .markdown-content code {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        overflow-x: auto;
+        max-width: 100%;
     }
     
     .chat-input-area {
@@ -192,7 +210,7 @@
 <!-- Grid de Métricas Clave y Gráfico -->
 <div class="ia-grid">
     <!-- Columna Izquierda: Gráficos de Proyecciones -->
-    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+    <div style="display: flex; flex-direction: column; gap: 1.5rem; min-width: 0;">
         <div class="card-premium">
             <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
                 <i class="fa-solid fa-chart-line"></i> Proyección de Ventas (12 Próximos Meses)
@@ -248,7 +266,7 @@
     </div>
     
     <!-- Columna Derecha: Consola Interactiva de Consultas IA -->
-    <div>
+    <div style="min-width: 0;">
         <div class="ia-console-box">
             <h2 style="font-size: 1.2rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem; color: var(--primary); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%;">
                 <span style="display: flex; align-items: center; gap: 0.5rem;">
