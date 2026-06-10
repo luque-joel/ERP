@@ -1,0 +1,576 @@
+{% extends 'taller/base.html' %}
+{% load static %}
+
+{% block title %}Inteligencia Predictiva | MotoTaller ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos Premium Adicionales para IA Decisiones */
+    .ia-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    
+    @media (max-width: 1024px) {
+        .ia-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .ia-console-box {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        height: 600px;
+        box-shadow: var(--shadow-main);
+    }
+    
+    .chat-messages {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    /* Custom Scrollbar */
+    .chat-messages::-webkit-scrollbar {
+        width: 6px;
+    }
+    .chat-messages::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.02);
+    }
+    .chat-messages::-webkit-scrollbar-thumb {
+        background: rgba(245, 158, 11, 0.3);
+        border-radius: 3px;
+    }
+    
+    .message {
+        padding: 1rem;
+        border-radius: 12px;
+        max-width: 85%;
+        line-height: 1.5;
+        font-size: 0.95rem;
+        animation: fadeInUp 0.3s ease;
+    }
+    
+    .message-user {
+        background-color: rgba(245, 158, 11, 0.15);
+        color: var(--text-main);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        align-self: flex-end;
+        border-bottom-right-radius: 2px;
+    }
+    
+    .message-ai {
+        background-color: rgba(255, 255, 255, 0.03);
+        color: var(--text-main);
+        border: 1px solid var(--border-color);
+        align-self: flex-start;
+        border-bottom-left-radius: 2px;
+        width: 100%;
+    }
+    
+    .chat-input-area {
+        display: flex;
+        gap: 0.75rem;
+        border-top: 1px solid var(--border-color);
+        padding-top: 1rem;
+    }
+    
+    .preset-questions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .btn-preset {
+        background-color: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .btn-preset:hover {
+        background-color: rgba(245, 158, 11, 0.1);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+    
+    /* Estilos Markdown sencillos */
+    .markdown-content h3 {
+        color: var(--primary);
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        font-size: 1.15rem;
+        font-weight: 700;
+        border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+        padding-bottom: 0.25rem;
+    }
+    .markdown-content h4 {
+        color: var(--text-main);
+        margin-top: 0.85rem;
+        margin-bottom: 0.4rem;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    .markdown-content ul {
+        margin-left: 1.25rem;
+        margin-bottom: 0.85rem;
+    }
+    .markdown-content li {
+        margin-bottom: 0.35rem;
+    }
+    .markdown-content p {
+        margin-bottom: 0.75rem;
+    }
+    .markdown-content strong {
+        color: var(--primary);
+    }
+    
+    .loader-dots {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        padding: 0.5rem 0.25rem;
+    }
+    .loader-dots span {
+        width: 8px;
+        height: 8px;
+        background-color: var(--primary);
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out both;
+    }
+    .loader-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .loader-dots span:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes bounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1.0); }
+    }
+    
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+        margin-top: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header-section">
+    <div>
+        <h1 class="title-main"><i class="fa-solid fa-brain" style="color: var(--primary); margin-right: 0.5rem;"></i> Toma de Decisiones con IA</h1>
+        <p class="subtitle-main">Análisis predictivo de ventas de repuestos, tendencias financieras e inteligencia de negocio con Gemini AI</p>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+        <button onclick="generarProyeccionAutomatica();" class="btn-premium" style="background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>Consultar Proyección Anual</span>
+        </button>
+    </div>
+</div>
+
+<!-- Grid de Métricas Clave y Gráfico -->
+<div class="ia-grid">
+    <!-- Columna Izquierda: Gráficos de Proyecciones -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div class="card-premium">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-chart-line"></i> Proyección de Ventas (12 Próximos Meses)
+            </h2>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;">Ventas históricas comparadas con la proyección de crecimiento basada en estacionalidad de taller.</p>
+            <div class="chart-container">
+                <canvas id="salesForecastChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Tabla de Demanda Proyectada de Repuestos para el Siguiente Año -->
+        <div class="card-premium">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--primary); border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fa-solid fa-box-open"></i> Proyección de Demanda Anual de Repuestos
+            </h2>
+            <div class="table-container">
+                <table class="table-premium">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Repuesto</th>
+                            <th>Categoría</th>
+                            <th>Stock Act.</th>
+                            <th style="text-align: center;">Vtas. Hist (Mes)</th>
+                            <th style="text-align: center; color: var(--primary);">Demanda Proy. (Año)</th>
+                            <th style="text-align: right;">Ingreso Proyectado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in repuestos_proj %}
+                        <tr>
+                            <td style="font-family: monospace; font-weight: bold; color: var(--text-muted);">{{ r.sku }}</td>
+                            <td style="font-weight: 600;">{{ r.nombre }}</td>
+                            <td>{{ r.categoria }}</td>
+                            <td style="font-weight: bold; {% if r.stock <= 5 %}color: #ff6b6b;{% else %}color: #51cf66;{% endif %}">{{ r.stock }} u</td>
+                            <td style="text-align: center;">{{ r.historico }}</td>
+                            <td style="text-align: center; font-weight: 800; color: var(--primary); font-size: 1.05rem;">
+                                {{ r.proyeccion }} u
+                            </td>
+                            <td style="text-align: right; font-weight: bold; color: #51cf66;">${{ r.ingreso_proyectado|floatformat:2 }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                No hay datos de inventario suficientes para generar la tabla.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Columna Derecha: Consola Interactiva de Consultas IA -->
+    <div>
+        <div class="ia-console-box">
+            <h2 style="font-size: 1.2rem; font-weight: 800; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem; color: var(--primary); display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%;">
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fa-solid fa-robot"></i> Consultor IA MotoTaller
+                </span>
+                <button type="button" onclick="clearChatHistory()" class="btn-preset" style="margin: 0; padding: 0.2rem 0.5rem; display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem;" title="Limpiar conversación">
+                    <i class="fa-solid fa-trash-can"></i> Limpiar
+                </button>
+            </h2>
+            
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">Selecciona una pregunta rápida o escribe tu consulta estratégica al Ing. sobre el negocio:</p>
+            
+            <!-- Preguntas rápidas -->
+            <div class="preset-questions">
+                <button class="btn-preset" onclick="setQuery('¿Qué proyecciones de venta de repuestos tengo para el siguiente año?')">
+                    📊 Proyección de Repuestos (Año siguiente)
+                </button>
+                <button class="btn-preset" onclick="setQuery('¿Cuáles serán los repuestos de mayor demanda (best-sellers) en los próximos meses y por qué?')">
+                    🏆 Repuestos Best-Sellers
+                </button>
+                <button class="btn-preset" onclick="setQuery('¿Qué estrategia de abastecimiento de repuestos me recomiendas para no quedarme sin stock?')">
+                    📦 Consejos de Stock y Pedidos
+                </button>
+            </div>
+            
+            <!-- Historial de Conversación / Respuestas de la IA -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="message message-ai">
+                    <p>¡Hola! Soy tu asistente de Inteligencia Predictiva. Puedo responder preguntas financieras y proyecciones de stock basadas en los datos de tu ERP.</p>
+                    <p>Prueba seleccionando una pregunta arriba o escribe tu propia consulta sobre las proyecciones a futuro.</p>
+                </div>
+            </div>
+            
+            <!-- Entrada de Consulta -->
+            <form id="chatForm" class="chat-input-area" onsubmit="submitQuery(event)">
+                {% csrf_token %}
+                <input type="text" id="userInput" name="query" class="input-premium" placeholder="Escribe tu consulta estratégica aquí..." required style="padding: 0.75rem; flex-grow: 1;">
+                <button type="submit" class="btn-premium" style="padding: 0.75rem 1.25rem;">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Librería Chart.js para los gráficos dinámicos -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Inicializar datos para el gráfico Chart.js
+    const mesesHist = {{ meses_hist_json|safe }};
+    const valoresHist = {{ valores_hist_json|safe }};
+    const mesesProj = {{ meses_proj_json|safe }};
+    const valoresProj = {{ valores_proj_json|safe }};
+    
+    // Unificar etiquetas y series
+    const labels = [...mesesHist, ...mesesProj];
+    
+    // Preparar series de datos
+    const dataHist = [...valoresHist];
+    // Rellenar con nulls la proyección para que comience donde termina el histórico
+    const dataProj = new Array(valoresHist.length - 1).fill(null);
+    // Añadimos el último valor histórico para conectar las líneas
+    dataProj.push(valoresHist[valoresHist.length - 1]);
+    dataProj.push(...valoresProj);
+    
+    // Configuración del gráfico
+    const ctx = document.getElementById('salesForecastChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Ventas Históricas ($)',
+                    data: dataHist,
+                    borderColor: 'hsl(38, 92%, 50%)', // Ámbar
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3
+                },
+                {
+                    label: 'Proyección IA ($)',
+                    data: dataProj,
+                    borderColor: '#51cf66', // Verde éxito
+                    backgroundColor: 'rgba(81, 207, 102, 0.05)',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    fill: true,
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'hsl(220, 10%, 70%)',
+                        font: {
+                            family: "'Outfit', sans-serif"
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: 'hsl(220, 10%, 70%)'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)'
+                    },
+                    ticks: {
+                        color: 'hsl(220, 10%, 70%)',
+                        callback: function(value) {
+                            return '$' + value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Chat / Consulta interactiva AJAX con persistencia en localStorage
+    const username = "{{ request.user.username }}";
+    const storageKey = 'ia_chat_history_' + username;
+
+    function setQuery(text) {
+        document.getElementById('userInput').value = text;
+        document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+    }
+
+    function submitQuery(event) {
+        event.preventDefault();
+        const inputElement = document.getElementById('userInput');
+        const query = inputElement.value.trim();
+        if (!query) return;
+        
+        // Agregar pregunta del usuario al chat y guardarla en el historial
+        appendMessage(query, 'user', true);
+        inputElement.value = '';
+        
+        // Agregar mensaje de carga de la IA
+        const loadingId = appendLoadingMessage();
+        
+        // Llamada AJAX
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const formData = new FormData();
+        formData.append('query', query);
+        
+        fetch("{% url 'taller:ia_decisiones' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Eliminar mensaje de carga e insertar respuesta formateada
+            removeLoadingMessage(loadingId);
+            if (data.response) {
+                appendMessage(data.response, 'ai', true);
+            } else if (data.error) {
+                appendMessage("Ocurrió un error: " + data.error, 'ai', true);
+            }
+        })
+        .catch(error => {
+            removeLoadingMessage(loadingId);
+            appendMessage("Error de conexión con el servidor.", 'ai', false); // No guardamos errores de red
+            console.error(error);
+        });
+    }
+
+    function appendMessage(text, sender, save = true) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', sender === 'user' ? 'message-user' : 'message-ai');
+        
+        if (sender === 'ai') {
+            // Formateador markdown básico para que las respuestas se vean premium
+            messageDiv.classList.add('markdown-content');
+            messageDiv.innerHTML = formatMarkdown(text);
+        } else {
+            messageDiv.textContent = text;
+        }
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        if (save) {
+            let history = [];
+            try {
+                history = JSON.parse(localStorage.getItem(storageKey)) || [];
+            } catch (e) {
+                console.error("Error al leer el historial de chat de localStorage:", e);
+            }
+            history.push({ text: text, sender: sender });
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(history));
+            } catch (e) {
+                console.error("Error al guardar el historial de chat en localStorage:", e);
+            }
+        }
+    }
+
+    function appendLoadingMessage() {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageDiv = document.createElement('div');
+        const loadingId = 'loading-' + Date.now();
+        messageDiv.id = loadingId;
+        messageDiv.classList.add('message', 'message-ai');
+        messageDiv.innerHTML = `
+            <span style="font-size:0.9rem; color:var(--text-muted);">Consultando Base de Datos y Procesando con IA...</span>
+            <div class="loader-dots"><span></span><span></span><span></span></div>
+        `;
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return loadingId;
+    }
+
+    function removeLoadingMessage(id) {
+        const element = document.getElementById(id);
+        if (element) element.remove();
+    }
+
+    // Cargar historial de chat desde localStorage al iniciar
+    function loadChatHistory() {
+        const chatMessages = document.getElementById('chatMessages');
+        chatMessages.innerHTML = ''; // Limpiar el contenedor
+        
+        let history = null;
+        try {
+            history = JSON.parse(localStorage.getItem(storageKey));
+        } catch (e) {
+            console.error("Error al parsear el historial de chat:", e);
+        }
+        
+        if (history && history.length > 0) {
+            history.forEach(msg => {
+                appendMessage(msg.text, msg.sender, false);
+            });
+        } else {
+            // Mensaje de bienvenida por defecto si no hay historial
+            chatMessages.innerHTML = `
+                <div class="message message-ai">
+                    <p>¡Hola! Soy tu asistente de Inteligencia Predictiva. Puedo responder preguntas financieras y proyecciones de stock basadas en los datos de tu ERP.</p>
+                    <p>Prueba seleccionando una pregunta arriba o escribe tu propia consulta sobre las proyecciones a futuro.</p>
+                </div>
+            `;
+        }
+    }
+
+    // Limpiar el historial de chat
+    function clearChatHistory() {
+        if (confirm('¿Estás seguro de que deseas limpiar el historial de conversación con la IA?')) {
+            try {
+                localStorage.removeItem(storageKey);
+            } catch (e) {
+                console.error("Error al limpiar el historial de chat:", e);
+            }
+            loadChatHistory();
+        }
+    }
+
+    // Generar consulta automática de proyección
+    function generarProyeccionAutomatica() {
+        setQuery('¿Qué proyecciones de venta de repuestos tengo para el siguiente año?');
+    }
+
+    // Parseador Markdown básico
+    function formatMarkdown(text) {
+        // Encabezados h3
+        text = text.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+        // Encabezados h4
+        text = text.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
+        // Negritas
+        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Listas ordenadas
+        text = text.replace(/^\d+\.\s+(.*$)/gim, '<li>$1</li>');
+        // Listas desordenadas
+        text = text.replace(/^\*\s+(.*$)/gim, '<li>$1</li>');
+        
+        // Agrupar elementos li en ul
+        let formatted = '';
+        let inList = false;
+        const lines = text.split('\n');
+        
+        for (let line of lines) {
+            if (line.trim().startsWith('<li>')) {
+                if (!inList) {
+                    formatted += '<ul>';
+                    inList = true;
+                }
+                formatted += line;
+            } else {
+                if (inList) {
+                    formatted += '</ul>';
+                    inList = false;
+                }
+                formatted += line + '<br>';
+            }
+        }
+        if (inList) {
+            formatted += '</ul>';
+        }
+        
+        return formatted;
+    }
+
+    // Inicializar el historial al cargar la página
+    window.addEventListener('DOMContentLoaded', loadChatHistory);
+</script>
+{% endblock %}

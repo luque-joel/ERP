@@ -30,6 +30,12 @@
                                 <span>Dashboard</span>
                             </a>
                         </li>
+                        <li class="nav-item {% if active_page == 'ia_decisiones' %}active{% endif %}">
+                            <a href="{% url 'taller:ia_decisiones' %}">
+                                <i class="fa-solid fa-brain"></i>
+                                <span>IA Decisiones</span>
+                            </a>
+                        </li>
                         {% endif %}
 
                         <!-- Órdenes de Trabajo (Operativa, Gerente o Superusuario) -->

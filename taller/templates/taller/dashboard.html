@@ -199,25 +199,28 @@
                 </form>
             </div>
 
-            {% for recomendacion in recomendaciones %}
-            <div style="padding: 1rem; background-color: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 1rem;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">
-                        {% if recomendacion.tipo == 'INVENTARIO' %}📦 PREDICCIÓN STOCK{% else %}🔧 SUGERENCIA PREVENTIVA{% endif %}
-                    </span>
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">{{ recomendacion.fecha_generacion|date:"d/m/Y H:i" }}</span>
+            <!-- Contenedor con scroll para evitar estiramiento de página -->
+            <div style="max-height: 380px; overflow-y: auto; padding-right: 0.4rem; display: flex; flex-direction: column; gap: 1rem;">
+                {% for recomendacion in recomendaciones %}
+                <div style="padding: 1rem; background-color: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">
+                            {% if recomendacion.tipo == 'INVENTARIO' %}📦 PREDICCIÓN STOCK{% else %}🔧 SUGERENCIA PREVENTIVA{% endif %}
+                        </span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">{{ recomendacion.fecha_generacion|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <h4 style="font-size: 0.95rem; font-weight: bold; margin-bottom: 0.5rem; color: var(--text-main);">{{ recomendacion.titulo }}</h4>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; white-space: pre-line;">
+                        {{ recomendacion.contenido|safe }}
+                    </div>
                 </div>
-                <h4 style="font-size: 0.95rem; font-weight: bold; margin-bottom: 0.5rem; color: var(--text-main);">{{ recomendacion.titulo }}</h4>
-                <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; white-space: pre-line;">
-                    {{ recomendacion.contenido|safe }}
+                {% empty %}
+                <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                    <p style="margin-bottom: 1rem;">No se han generado análisis predictivos.</p>
+                    <p style="font-size: 0.8rem;">Haz clic en <strong>"Analizar con IA"</strong> para que el modelo procese el historial y brinde sugerencias.</p>
                 </div>
+                {% endfor %}
             </div>
-            {% empty %}
-            <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
-                <p style="margin-bottom: 1rem;">No se han generado análisis predictivos.</p>
-                <p style="font-size: 0.8rem;">Haz clic en <strong>"Analizar con IA"</strong> para que el modelo procese el historial y brinde sugerencias.</p>
-            </div>
-            {% endfor %}
         </div>
     </div>
 </div>

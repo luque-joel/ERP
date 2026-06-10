@@ -37,6 +37,7 @@ urlpatterns = [
     
     # IA Analítica
     path('ia/recomendar/', views.generar_ia_recomendacion, name='generar_ia_recomendacion'),
+    path('ia/decisiones/', views.ia_decisiones, name='ia_decisiones'),
 
     # Reportes Automatizados y Exportaciones (Gerencia & Ventas)
     path('reportes/', views.reportes_dashboard, name='reportes'),

@@ -139,3 +139,22 @@ class ReportesViewsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         self.client.logout()
+
+    def test_ia_decisiones_access(self):
+        # Gerente puede acceder al modulo de decisiones
+        self.client.login(username='gerente', password='password123')
+        response = self.client.get('/ia/decisiones/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Toma de Decisiones con IA")
+        
+        # Test chat AJAX POST request
+        response_post = self.client.post('/ia/decisiones/', {'query': 'proyeccion de repuestos'})
+        self.assertEqual(response_post.status_code, 200)
+        self.assertIn('response', response_post.json())
+        self.client.logout()
+        
+        # Bodeguero no tiene acceso
+        self.client.login(username='bodeguero', password='password123')
+        response = self.client.get('/ia/decisiones/')
+        self.assertEqual(response.status_code, 302)
+        self.client.logout()
