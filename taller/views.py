@@ -754,20 +754,35 @@ def obtener_analisis_ia(prompt_sistema, prompt_usuario):
             if r.status_code == 200:
                 result = r.json()
                 return result["choices"][0]["message"]["content"], True
-        except Exception:
-            pass
+            else:
+                print(f"[IA] Groq API falló con código {r.status_code}: {r.text}")
+        except Exception as e:
+            print(f"[IA] Excepción al llamar a Groq API: {e}")
             
     # 2. Intentar con Gemini API
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
     if gemini_key:
-        try:
-            if GEMINI_AVAILABLE:
-                genai.configure(api_key=gemini_key)
-                model = genai.GenerativeModel("gemini-1.5-flash")
-                response = model.generate_content(f"{prompt_sistema}\n\n{prompt_usuario}")
-                return response.text, True
-        except Exception:
-            pass
+        if GEMINI_AVAILABLE:
+            # Lista de modelos ordenados por preferencia. El SDK deprecated puede fallar
+            # con modelos descontinuados. Probamos con las últimas versiones de flash.
+            modelos_a_probar = [
+                "gemini-2.5-flash", 
+                "gemini-2.0-flash", 
+                "gemini-1.5-flash-latest", 
+                "gemini-1.5-flash",
+                "gemini-3.5-flash"
+            ]
+            for model_name in modelos_a_probar:
+                try:
+                    genai.configure(api_key=gemini_key)
+                    model = genai.GenerativeModel(model_name)
+                    response = model.generate_content(f"{prompt_sistema}\n\n{prompt_usuario}")
+                    if response and response.text:
+                        return response.text, True
+                except Exception as model_err:
+                    print(f"[IA] Falló el modelo Gemini '{model_name}': {model_err}")
+        else:
+            print("[IA] Librería google-generativeai no está disponible.")
             
     return "", False
 
