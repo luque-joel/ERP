@@ -222,6 +222,12 @@ class Empleado(models.Model):
         verbose_name_plural = "Empleados"
         ordering = ['user__first_name', 'user__last_name']
 
+    def save(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+        if self.cargo != 'VENDEDOR' and self.porcentaje_comision > Decimal('0.00'):
+            raise ValidationError('Solo los vendedores pueden tener un porcentaje de comisión mayor a cero.')
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} - {self.get_cargo_display()}"
 

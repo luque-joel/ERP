@@ -83,7 +83,13 @@
                     <td><strong style="color: var(--text-main);">{{ emp.get_cargo_display }}</strong></td>
                     <td>{{ emp.telefono|default:"-" }}</td>
                     <td>${{ emp.sueldo_base|floatformat:2 }}</td>
-                    <td>{{ emp.porcentaje_comision }}%</td>
+                    <td>
+                        {% if emp.cargo == 'VENDEDOR' %}
+                            {{ emp.porcentaje_comision }}%
+                        {% else %}
+                            <span style="color: var(--text-muted); font-style: italic;">N/A</span>
+                        {% endif %}
+                    </td>
                     <td>
                         {% if emp.activo %}
                         <span class="badge-status badge-terminado" style="font-size: 0.7em;">Activo</span>
@@ -333,7 +339,7 @@
                 <select name="empleado_id" id="nomina_empleado_select" class="input-premium" style="padding: 0.5rem;">
                     <option value="">-- Seleccionar Empleado --</option>
                     {% for e in lista_empleados %}
-                    <option value="{{ e.id }}">{{ e }}</option>
+                    <option value="{{ e.id }}" data-cargo="{{ e.cargo }}" data-sueldo="{{ e.sueldo_base }}">{{ e }}</option>
                     {% endfor %}
                 </select>
                 
@@ -359,11 +365,11 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                 <div>
                     <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Sueldo Base ($):*</label>
-                    <input type="number" step="0.01" name="sueldo_basico" class="input-premium" value="460.00" required style="padding: 0.5rem;">
+                    <input type="number" step="0.01" name="sueldo_basico" id="nomina_sueldo_input" class="input-premium" value="460.00" required style="padding: 0.5rem;">
                 </div>
                 <div>
                     <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Comisiones ($):</label>
-                    <input type="number" step="0.01" name="comisiones" class="input-premium" value="0.00" style="padding: 0.5rem;">
+                    <input type="number" step="0.01" name="comisiones" id="nomina_comisiones_input" class="input-premium" value="0.00" style="padding: 0.5rem;">
                 </div>
             </div>
 
@@ -471,5 +477,56 @@
             document.getElementById('nomina_mecanico_select').setAttribute('required', 'true');
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const empSelect = document.getElementById('nomina_empleado_select');
+        const sueldoInput = document.getElementById('nomina_sueldo_input');
+        const comisionesInput = document.getElementById('nomina_comisiones_input');
+        const radioBtns = document.getElementsByName('nomina_tipo');
+
+        function updateFieldsForSelectedEmployee() {
+            const selectedOpt = empSelect.options[empSelect.selectedIndex];
+            if (selectedOpt && selectedOpt.value) {
+                const sueldo = selectedOpt.getAttribute('data-sueldo');
+                const cargo = selectedOpt.getAttribute('data-cargo');
+                
+                if (sueldo) {
+                    sueldoInput.value = parseFloat(sueldo).toFixed(2);
+                }
+                
+                if (cargo === 'VENDEDOR') {
+                    comisionesInput.disabled = false;
+                    comisionesInput.style.opacity = '1';
+                    comisionesInput.style.cursor = 'text';
+                } else {
+                    comisionesInput.value = '0.00';
+                    comisionesInput.disabled = true;
+                    comisionesInput.style.opacity = '0.5';
+                    comisionesInput.style.cursor = 'not-allowed';
+                }
+            } else {
+                comisionesInput.disabled = false;
+                comisionesInput.style.opacity = '1';
+                comisionesInput.style.cursor = 'text';
+            }
+        }
+
+        if (empSelect) {
+            empSelect.addEventListener('change', updateFieldsForSelectedEmployee);
+        }
+
+        for (let i = 0; i < radioBtns.length; i++) {
+            radioBtns[i].addEventListener('change', function() {
+                if (this.value === 'mecanico') {
+                    comisionesInput.disabled = false;
+                    comisionesInput.style.opacity = '1';
+                    comisionesInput.style.cursor = 'text';
+                    sueldoInput.value = '460.00';
+                } else {
+                    updateFieldsForSelectedEmployee();
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}
