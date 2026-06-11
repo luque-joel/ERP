@@ -1,12 +1,13 @@
 import random
 import sys
 import calendar
+import time
 from datetime import datetime, timedelta
 from decimal import Decimal
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth.models import User
 from django.utils import timezone
-from django.db import transaction, connection
+from django.db import transaction, connection, InterfaceError, OperationalError
 from django.db.models import F
 from django.core.management.color import no_style
 
@@ -18,11 +19,8 @@ from taller.models import (
 
 # Helpers for unique code generation
 def generate_valid_cedula():
-    # Provincia between 01 and 24
     prov = f"{random.randint(1, 24):02d}"
-    # Third digit < 6 (0 to 5) for natural person
     third = str(random.randint(0, 5))
-    # Next 6 digits
     digits = [int(prov[0]), int(prov[1]), int(third)] + [random.randint(0, 9) for _ in range(6)]
     
     coeficientes = [2, 1, 2, 1, 2, 1, 2, 1, 2]
@@ -160,7 +158,6 @@ class Command(BaseCommand):
             _next_ot_num = 1
             _next_factura_num = 1
         else:
-            # Forzar recálculo
             _next_ot_num = None
             _next_factura_num = None
 
@@ -267,13 +264,11 @@ class Command(BaseCommand):
                     precio_venta=Decimal(str(p_venta)),
                     aplica_iva=True
                 )
-                # Asignar compatibilidades aleatorias
                 if compatibilidades:
                     r.compatibilidades.set(random.sample(compatibilidades, k=random.randint(1, 3)))
                 repuestos.append(r)
             self.stdout.write(self.style.SUCCESS(f"Catálogo de repuestos listo: {len(repuestos)} repuestos."))
         else:
-            # Reabastecer stock de los existentes para que no queden en cero durante la simulación
             self.stdout.write("Restableciendo stock de repuestos existentes...")
             for r in repuestos:
                 r.stock = random.randint(150, 300)
@@ -304,7 +299,6 @@ class Command(BaseCommand):
                     vehiculos.append(v)
             self.stdout.write(self.style.SUCCESS(f"Vehículos listos: {len(vehiculos)}"))
 
-        # Fallas y diagnósticos comunes para las órdenes de trabajo
         problemas = [
             ("Moto no enciende con el botón de arranque", "Batería descargada o dañada, requiere cambio."),
             ("Frenos traseros muy largos y ruidosos", "Zapatas de freno desgastadas, se realiza cambio."),
@@ -334,12 +328,10 @@ class Command(BaseCommand):
             year = current_date_ref.year
             month = current_date_ref.month
 
-            # Evitar ir más allá del mes actual
             if year == now.year and month > now.month:
                 break
 
             # Calcular factor estacional
-            # Dic (+35%), Ene (+20%), Abr (-15%), May/Jun (+10%)
             seasonal_factor = 1.0
             if month == 12:
                 seasonal_factor = 1.35
@@ -350,12 +342,8 @@ class Command(BaseCommand):
             elif month in [5, 6]:
                 seasonal_factor = 1.10
 
-            # Crecimiento constante acumulado (1.5% mensual)
             growth_factor = 1.0 + (m_idx * 0.015)
-            
-            # Meta de ventas mensuales ajustada para este mes específico
             month_target = Decimal(str(target_sales)) * Decimal(str(seasonal_factor)) * Decimal(str(growth_factor))
-            # Añadir pequeña fluctuación aleatoria (+-10%)
             month_target *= Decimal(str(random.uniform(0.9, 1.1)))
 
             month_sales = Decimal('0.00')
@@ -363,11 +351,8 @@ class Command(BaseCommand):
             
             self.stdout.write(f"Sembrando {year}-{month:02d} | Meta: ${month_target:,.2f}...")
 
-            # Generar facturas hasta alcanzar la meta del mes
             while month_sales < month_target:
-                # Generar fecha aleatoria dentro de este mes
                 last_day = calendar.monthrange(year, month)[1]
-                # Si es el mes actual, no generar en el futuro
                 if year == now.year and month == now.month:
                     last_day = min(last_day, now.day)
                 
@@ -381,236 +366,227 @@ class Command(BaseCommand):
                     timezone.get_current_timezone()
                 )
 
-                # Si por casualidad queda en el futuro absoluto (por zonas horarias), ajustar a ahora
                 if invoice_date > now:
                     invoice_date = now
 
-                # Elegir cliente y vendedor
                 client = random.choice(clientes)
                 vendedor = random.choice(vendedores)
-
-                # Decidir si la factura tiene Orden de Trabajo (Servicio Taller) o es Venta Directa (POS)
-                # 60% Taller / 40% POS
                 is_taller = random.random() < 0.60
                 
-                orden_trabajo = None
-                detalles_factura = []
-                detalles_orden = []
-                movimientos_inventario = []
-
-                if is_taller:
-                    # Crear Orden de Trabajo
-                    # Conseguir un vehículo del cliente
-                    client_vehicles = list(client.vehiculos.all())
-                    if not client_vehicles:
-                        # Si no tiene, asignarle uno aleatorio o crear uno rápido
-                        placa = generate_valid_plate()
-                        while Vehiculo.objects.filter(placa=placa).exists():
-                            placa = generate_valid_plate()
-                        v = Vehiculo.objects.create(
-                            tipo=random.choice(['MOTO', 'TRICIMOTO']),
-                            marca=random.choice(["Yamaha", "Honda", "Shineray"]),
-                            modelo=random.choice(["FZ25", "CB190R", "XY200"]),
-                            anio=random.randint(2018, 2025),
-                            placa=placa,
-                            cliente=client
-                        )
-                        client_vehicles = [v]
-                    
-                    vehicle = random.choice(client_vehicles)
-                    mecanico = random.choice(mecanicos)
-                    prob_desc = random.choice(problemas)
-
-                    mano_obra_cost = Decimal(str(round(random.uniform(12.00, 45.00), 2)))
-
-                    # Generar codigo_orden único para evitar UniqueViolation
-                    codigo_ot_gen = generate_unique_codigo_orden()
-
-                    # Crear OT
-                    orden_trabajo = OrdenTrabajo.objects.create(
-                        codigo_orden=codigo_ot_gen,
-                        vehiculo=vehicle,
-                        mecanico=mecanico,
-                        creado_por=vendedor,
-                        facturada=True,
-                        kilometraje=random.randint(1000, 45000),
-                        nivel_combustible=random.choice(["1/4", "1/2", "3/4", "Lleno"]),
-                        observaciones_recepcion=prob_desc[0],
-                        diagnostico=prob_desc[1],
-                        mano_obra=mano_obra_cost,
-                        estado='ENTREGADO'
-                    )
-                    
-                    # Detalle Mano de Obra en la Factura
-                    det_mano_obra = DetalleFactura(
-                        servicio_mano_obra=f"Servicio Taller: {prob_desc[0]}",
-                        cantidad=1,
-                        precio_unitario=mano_obra_cost,
-                        subtotal=mano_obra_cost
-                    )
-                    detalles_factura.append(det_mano_obra)
-                    total_ordenes_creadas += 1
-
-                    # Agregar 1 a 3 repuestos a la orden de trabajo y a la factura
-                    num_repuestos = random.randint(1, 3)
-                    selected_repuestos = random.sample(repuestos, k=min(num_repuestos, len(repuestos)))
-                    
-                    for r in selected_repuestos:
-                        qty = random.randint(1, 2)
-                        
-                        # Detalle para la Orden de Trabajo
-                        det_ot = DetalleRepuestoOrden(
-                            orden=orden_trabajo,
-                            repuesto=r,
-                            cantidad=qty,
-                            precio_historico=r.precio_venta
-                        )
-                        detalles_orden.append(det_ot)
-
-                        # Detalle para la Factura
-                        det_fac = DetalleFactura(
-                            repuesto=r,
-                            cantidad=qty,
-                            precio_unitario=r.precio_venta,
-                            subtotal=r.precio_venta * qty
-                        )
-                        detalles_factura.append(det_fac)
-
-                        # Registrar egreso en Kardex
-                        mov = MovimientoInventario(
-                            repuesto=r,
-                            tipo='EGRESO_TALLER',
-                            cantidad=qty,
-                            usuario=vendedor,
-                            motivo=f"Consumo en Orden {orden_trabajo.codigo_orden}"
-                        )
-                        movimientos_inventario.append(mov)
-                        
-                        # Restar del inventario físico
-                        Repuesto.objects.filter(pk=r.pk).update(stock=F('stock') - qty)
-                else:
-                    # Venta Directa por POS (Solo repuestos)
-                    num_repuestos = random.randint(1, 4)
-                    selected_repuestos = random.sample(repuestos, k=min(num_repuestos, len(repuestos)))
-                    
-                    for r in selected_repuestos:
-                        qty = random.randint(1, 3)
-                        
-                        det_fac = DetalleFactura(
-                            repuesto=r,
-                            cantidad=qty,
-                            precio_unitario=r.precio_venta,
-                            subtotal=r.precio_venta * qty
-                        )
-                        detalles_factura.append(det_fac)
-
-                        # Registrar egreso en Kardex
-                        mov = MovimientoInventario(
-                            repuesto=r,
-                            tipo='EGRESO_VENTA',
-                            cantidad=qty,
-                            usuario=vendedor,
-                            motivo="Venta POS Directa"
-                        )
-                        movimientos_inventario.append(mov)
-
-                        # Restar del inventario físico
-                        Repuesto.objects.filter(pk=r.pk).update(stock=F('stock') - qty)
-
-                # Calcular Totales de la Factura
-                subtotal_15 = Decimal('0.00')
-                subtotal_0 = Decimal('0.00')
-
-                for d in detalles_factura:
-                    # Si es repuesto, verificar si aplica IVA 15% (tarifa_iva = '2')
-                    if d.repuesto:
-                        if d.repuesto.tarifa_iva == '2':
-                            subtotal_15 += d.subtotal
-                        else:
-                            subtotal_0 += d.subtotal
-                    else:
-                        # Servicios llevan IVA
-                        subtotal_15 += d.subtotal
-
-                valor_iva = subtotal_15 * Decimal('0.15')
-                total_pagar = subtotal_15 + subtotal_0 + valor_iva
-
-                # Redondear a dos decimales
-                subtotal_15 = round(subtotal_15, 2)
-                subtotal_0 = round(subtotal_0, 2)
-                valor_iva = round(valor_iva, 2)
-                total_pagar = round(total_pagar, 2)
-
-                # Generar numero_factura único para evitar UniqueViolation
-                num_factura_gen = generate_unique_numero_factura()
-
-                # Crear y guardar Factura
-                factura = Factura.objects.create(
-                    numero_factura=num_factura_gen,
-                    cliente=client,
-                    orden_trabajo=orden_trabajo,
-                    vendedor=vendedor,
-                    estado='PAGADA',
-                    subtotal_15=subtotal_15,
-                    subtotal_0=subtotal_0,
-                    total_descuento=Decimal('0.00'),
-                    valor_iva=valor_iva,
-                    total_pagar=total_pagar,
-                    estado_sri='AUTORIZADO',
-                    ambiente='1',
-                    clave_acceso=f"{invoice_date.strftime('%d%m%Y')}0109999999990011001001{random.randint(100000000, 999999999)}123456781",
-                    numero_autorizacion=f"AUT-{random.randint(10000000, 99999999)}-{random.randint(100000,999999)}",
-                    fecha_autorizacion=invoice_date
-                )
-
-                # Asignar factura a los detalles y guardarlos
-                for d in detalles_factura:
-                    d.factura = factura
-                    d.save()
-
-                # Guardar detalles de la orden si corresponde
-                for d_ot in detalles_orden:
-                    d_ot.save()
-
-                # Guardar movimientos de inventario
-                for m in movimientos_inventario:
-                    m.save()
-
-                # Crear Método de Pago
-                # Métodos: 01 (Efectivo - 60%), 20 (Transferencia - 25%), 16/19 (Tarjetas - 15%)
-                rand_pay = random.random()
-                if rand_pay < 0.60:
-                    metodo_str = '01' # Efectivo
-                elif rand_pay < 0.85:
-                    metodo_str = '20' # Transferencia
-                elif rand_pay < 0.93:
-                    metodo_str = '16' # Débito
-                else:
-                    metodo_str = '19' # Crédito
+                # Implementación de reintentos robusta con transacciones atómicas independientes
+                max_retries = 3
+                success_invoice = False
                 
-                MetodoPago.objects.create(
-                    factura=factura,
-                    metodo=metodo_str,
-                    monto=total_pagar
-                )
+                for attempt in range(max_retries):
+                    try:
+                        with transaction.atomic():
+                            orden_trabajo = None
+                            detalles_factura = []
+                            detalles_orden = []
+                            movimientos_inventario = []
 
-                # Forzar fechas en el pasado mediante consultas UPDATE directas
-                Factura.objects.filter(pk=factura.pk).update(fecha_emision=invoice_date)
+                            if is_taller:
+                                client_vehicles = list(client.vehiculos.all())
+                                if not client_vehicles:
+                                    placa = generate_valid_plate()
+                                    while Vehiculo.objects.filter(placa=placa).exists():
+                                        placa = generate_valid_plate()
+                                    v = Vehiculo.objects.create(
+                                        tipo=random.choice(['MOTO', 'TRICIMOTO']),
+                                        marca=random.choice(["Yamaha", "Honda", "Shineray"]),
+                                        modelo=random.choice(["FZ25", "CB190R", "XY200"]),
+                                        anio=random.randint(2018, 2025),
+                                        placa=placa,
+                                        cliente=client
+                                    )
+                                    client_vehicles = [v]
+                                
+                                vehicle = random.choice(client_vehicles)
+                                mecanico = random.choice(mecanicos)
+                                prob_desc = random.choice(problemas)
+                                mano_obra_cost = Decimal(str(round(random.uniform(12.00, 45.00), 2)))
+                                codigo_ot_gen = generate_unique_codigo_orden()
+
+                                # Crear OT
+                                orden_trabajo = OrdenTrabajo.objects.create(
+                                    codigo_orden=codigo_ot_gen,
+                                    vehiculo=vehicle,
+                                    mecanico=mecanico,
+                                    creado_por=vendedor,
+                                    facturada=True,
+                                    kilometraje=random.randint(1000, 45000),
+                                    nivel_combustible=random.choice(["1/4", "1/2", "3/4", "Lleno"]),
+                                    observaciones_recepcion=prob_desc[0],
+                                    diagnostico=prob_desc[1],
+                                    mano_obra=mano_obra_cost,
+                                    estado='ENTREGADO'
+                                )
+                                
+                                det_mano_obra = DetalleFactura(
+                                    servicio_mano_obra=f"Servicio Taller: {prob_desc[0]}",
+                                    cantidad=1,
+                                    precio_unitario=mano_obra_cost,
+                                    subtotal=mano_obra_cost
+                                )
+                                detalles_factura.append(det_mano_obra)
+
+                                num_repuestos = random.randint(1, 3)
+                                selected_repuestos = random.sample(repuestos, k=min(num_repuestos, len(repuestos)))
+                                
+                                for r in selected_repuestos:
+                                    qty = random.randint(1, 2)
+                                    
+                                    det_ot = DetalleRepuestoOrden(
+                                        orden=orden_trabajo,
+                                        repuesto=r,
+                                        cantidad=qty,
+                                        precio_historico=r.precio_venta
+                                    )
+                                    detalles_orden.append(det_ot)
+
+                                    det_fac = DetalleFactura(
+                                        repuesto=r,
+                                        cantidad=qty,
+                                        precio_unitario=r.precio_venta,
+                                        subtotal=r.precio_venta * qty
+                                    )
+                                    detalles_factura.append(det_fac)
+
+                                    mov = MovimientoInventario(
+                                        repuesto=r,
+                                        tipo='EGRESO_TALLER',
+                                        cantidad=qty,
+                                        usuario=vendedor,
+                                        motivo=f"Consumo en Orden {orden_trabajo.codigo_orden}"
+                                    )
+                                    movimientos_inventario.append(mov)
+                                    Repuesto.objects.filter(pk=r.pk).update(stock=F('stock') - qty)
+                            else:
+                                num_repuestos = random.randint(1, 4)
+                                selected_repuestos = random.sample(repuestos, k=min(num_repuestos, len(repuestos)))
+                                
+                                for r in selected_repuestos:
+                                    qty = random.randint(1, 3)
+                                    
+                                    det_fac = DetalleFactura(
+                                        repuesto=r,
+                                        cantidad=qty,
+                                        precio_unitario=r.precio_venta,
+                                        subtotal=r.precio_venta * qty
+                                    )
+                                    detalles_factura.append(det_fac)
+
+                                    mov = MovimientoInventario(
+                                        repuesto=r,
+                                        tipo='EGRESO_VENTA',
+                                        cantidad=qty,
+                                        usuario=vendedor,
+                                        motivo="Venta POS Directa"
+                                    )
+                                    movimientos_inventario.append(mov)
+                                    Repuesto.objects.filter(pk=r.pk).update(stock=F('stock') - qty)
+
+                            # Calcular Totales de la Factura
+                            subtotal_15 = Decimal('0.00')
+                            subtotal_0 = Decimal('0.00')
+
+                            for d in detalles_factura:
+                                if d.repuesto:
+                                    if d.repuesto.tarifa_iva == '2':
+                                        subtotal_15 += d.subtotal
+                                    else:
+                                        subtotal_0 += d.subtotal
+                                else:
+                                    subtotal_15 += d.subtotal
+
+                            valor_iva = subtotal_15 * Decimal('0.15')
+                            total_pagar = subtotal_15 + subtotal_0 + valor_iva
+
+                            subtotal_15 = round(subtotal_15, 2)
+                            subtotal_0 = round(subtotal_0, 2)
+                            valor_iva = round(valor_iva, 2)
+                            total_pagar = round(total_pagar, 2)
+
+                            num_factura_gen = generate_unique_numero_factura()
+
+                            # Crear y guardar Factura
+                            factura = Factura.objects.create(
+                                numero_factura=num_factura_gen,
+                                cliente=client,
+                                orden_trabajo=orden_trabajo,
+                                vendedor=vendedor,
+                                estado='PAGADA',
+                                subtotal_15=subtotal_15,
+                                subtotal_0=subtotal_0,
+                                total_descuento=Decimal('0.00'),
+                                valor_iva=valor_iva,
+                                total_pagar=total_pagar,
+                                estado_sri='AUTORIZADO',
+                                ambiente='1',
+                                clave_acceso=f"{invoice_date.strftime('%d%m%Y')}0109999999990011001001{random.randint(100000000, 999999999)}123456781",
+                                numero_autorizacion=f"AUT-{random.randint(10000000, 99999999)}-{random.randint(100000,999999)}",
+                                fecha_autorizacion=invoice_date
+                            )
+
+                            # Guardar detalles y métodos de pago dentro del bloque atómico
+                            for d in detalles_factura:
+                                d.factura = factura
+                                d.save()
+
+                            for d_ot in detalles_orden:
+                                d_ot.save()
+
+                            for m in movimientos_inventario:
+                                m.save()
+
+                            rand_pay = random.random()
+                            if rand_pay < 0.60:
+                                metodo_str = '01'
+                            elif rand_pay < 0.85:
+                                metodo_str = '20'
+                            elif rand_pay < 0.93:
+                                metodo_str = '16'
+                            else:
+                                metodo_str = '19'
+                            
+                            MetodoPago.objects.create(
+                                factura=factura,
+                                metodo=metodo_str,
+                                monto=total_pagar
+                            )
+
+                            # Actualizar fechas
+                            Factura.objects.filter(pk=factura.pk).update(fecha_emision=invoice_date)
+                            
+                            if orden_trabajo:
+                                ingreso_date = invoice_date - timedelta(hours=random.randint(2, 48))
+                                OrdenTrabajo.objects.filter(pk=orden_trabajo.pk).update(
+                                    fecha_ingreso=ingreso_date,
+                                    fecha_prometida=invoice_date,
+                                    fecha_entrega=invoice_date
+                                )
+                                total_ordenes_creadas += 1
+
+                            if movimientos_inventario:
+                                mov_ids = [mv.pk for mv in movimientos_inventario]
+                                MovimientoInventario.objects.filter(pk__in=mov_ids).update(fecha=invoice_date)
+
+                        # Si se completó sin excepciones, salir del bucle de reintentos
+                        success_invoice = True
+                        break
+                    except (OperationalError, InterfaceError) as db_err:
+                        # Cerrar conexión rota para forzar reconexión limpia en el siguiente intento
+                        self.stdout.write(self.style.WARNING(f"Conexión perdida con base de datos, reintentando factura... Intento {attempt + 1}/{max_retries}. Error: {db_err}"))
+                        try:
+                            connection.close()
+                        except Exception:
+                            pass
+                        time.sleep(1.5)
                 
-                if orden_trabajo:
-                    # La orden de trabajo ingresó un poco antes y terminó en la fecha de la factura
-                    ingreso_date = invoice_date - timedelta(hours=random.randint(2, 48))
-                    OrdenTrabajo.objects.filter(pk=orden_trabajo.pk).update(
-                        fecha_ingreso=ingreso_date,
-                        fecha_prometida=invoice_date,
-                        fecha_entrega=invoice_date
-                    )
+                # Si fallaron todos los reintentos de conexión, abortar
+                if not success_invoice:
+                    raise CommandError("La conexión con la base de datos de Railway se perdió definitivamente.")
 
-                if movimientos_inventario:
-                    mov_ids = [m.pk for m in movimientos_inventario]
-                    MovimientoInventario.objects.filter(pk__in=mov_ids).update(fecha=invoice_date)
-
-                # Actualizar acumuladores
                 month_sales += total_pagar
                 month_invoices_count += 1
                 total_facturas_creadas += 1
