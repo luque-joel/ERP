@@ -1027,6 +1027,26 @@ def ia_decisiones(request):
     # 1. Ventas mensuales históricas
     ventas_mensuales = defaultdict(Decimal)
     facturas = Factura.objects.filter(estado='PAGADA').order_by('fecha_emision')
+    
+    if facturas.exists():
+        # Obtener el rango completo de meses para evitar saltos o huecos en la gráfica
+        first_date = facturas.first().fecha_emision
+        last_date = facturas.last().fecha_emision
+        
+        # Generar claves de meses intermedias
+        curr_year = first_date.year
+        curr_month = first_date.month
+        end_year = last_date.year
+        end_month = last_date.month
+        
+        while (curr_year < end_year) or (curr_year == end_year and curr_month <= end_month):
+            ventas_mensuales[f"{curr_year}-{curr_month:02d}"] = Decimal('0.00')
+            if curr_month == 12:
+                curr_month = 1
+                curr_year += 1
+            else:
+                curr_month += 1
+
     for f in facturas:
         mes_key = f.fecha_emision.strftime('%Y-%m')
         ventas_mensuales[mes_key] += f.total_pagar
